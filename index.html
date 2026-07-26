@@ -433,7 +433,7 @@ header .src a{color:var(--muted)}
     <span data-i18n="rango" style="color:var(--muted);font-size:11px">Rango</span>
     <select id="anRango">
       <option value="1">24 h</option><option value="3">3 d</option>
-      <option value="7" selected data-i18n="d7">7 días</option><option value="15" data-i18n="d15">15 días</option>
+      <option value="7" selected data-i18n="d7">7 días</option><option value="15" data-i18n="d15">15 días</option><option value="30" data-i18n="d30">30 días</option>
     </select>
     <span data-i18n="region" style="color:var(--muted);font-size:11px">Región</span>
     <select id="anRegion"></select>
@@ -483,6 +483,8 @@ const FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.
    Si se deja vacío, se usa el espejo público SismosVE directamente.
    El orden de intento es: tu proxy → espejo SismosVE.                 */
 const FUNVISIS_PROXY = 'https://script.google.com/macros/s/AKfycbyl6CIhwYpq6cpA36de8g3QPN2Gw2IwvKJITFmELAcSjt44VZHDJibbDApRLYLwwWXAcA/exec';
+/* mismo despliegue, ruta ?archivo=1 → catálogo histórico propio (hoja de cálculo) */
+const ARCHIVO_API = FUNVISIS_PROXY;
 const FEED_FUNVISIS_MIRROR = 'https://sismosve.rafnixg.dev/api/sismos';
 const FUNVISIS_FEEDS = [FUNVISIS_PROXY, FEED_FUNVISIS_MIRROR].filter(Boolean);
 const REFRESH_MS = 60000;
@@ -960,7 +962,8 @@ async function cargarAnalisis(){
   const minMag = (reg && reg.sinPiso) ? 0 : (dias<=1 ? 1.5 : 2.5);
   const clave = dias+'|'+regK;
 
-  document.getElementById('anNota').textContent = t('analNota').replace('{m}', 'M '+(minMag||'0'));
+  const notaEl = document.getElementById('anNota');
+  notaEl.textContent = t('analNota').replace('{m}', 'M '+(minMag||'0'));
   document.getElementById('anBody').style.display = 'none';
   document.getElementById('anLoading').style.display = 'block';
   document.getElementById('anLoading').textContent = t('consultando');
@@ -980,21 +983,23 @@ async function cargarAnalisis(){
         .filter(f=>f.properties.mag!=null)
         .map(f=>({mag:f.properties.mag, time:f.properties.time,
                   lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0]}));
-      // región Venezuela: complementar con FUNVISIS (vía tu proxy)
-      if(regK==='rVen'){
-        try{
-          const fv = await fetchFUNVISIS();
-          const desdeMs = Date.now() - dias*86400e3;
-          fv.filter(q=>q.time>=desdeMs).forEach(q=>{
-            const dup = datos.some(d =>
-              Math.abs(d.time-q.time) < 10*60*1000 &&
-              Math.abs(d.lat-q.lat) < 0.5 &&
-              Math.abs(d.lon-q.lon) < 0.5
-            );
-            if(!dup) datos.push({mag:q.mag, time:q.time, lat:q.lat, lon:q.lon});
-          });
-        }catch(e){ /* si FUNVISIS falla, la gráfica queda solo con USGS */ }
-      }
+      // complementar con el archivo histórico propio (hoja de cálculo):
+      // aporta la microsismicidad FUNVISIS que USGS no cataloga, en todo el rango
+      let aporteArchivo = 0;
+      try{
+        const arch = await fetchArchivo({dias, minmag: reg && reg.sinPiso ? 0 : minMag});
+        arch.forEach(a=>{
+          if(reg && (a.lat < reg.minlat || a.lat > reg.maxlat ||
+                     a.lon < reg.minlon || a.lon > reg.maxlon)) return;
+          const dup = datos.some(d =>
+            Math.abs(d.time-a.time) < 10*60*1000 &&
+            Math.abs(d.lat-a.lat) < 0.5 &&
+            Math.abs(d.lon-a.lon) < 0.5
+          );
+          if(!dup){ datos.push({mag:a.mag, time:a.time, lat:a.lat, lon:a.lon}); aporteArchivo++; }
+        });
+      }catch(e){ /* sin archivo, la gráfica queda solo con USGS */ }
+      datos._arch = aporteArchivo;
       anCache[clave] = datos;
     }catch(e){
       document.getElementById('anLoading').textContent = t('analError');
@@ -1007,6 +1012,9 @@ async function cargarAnalisis(){
   document.getElementById('anMax').textContent = datos.length ? Math.max(...datos.map(d=>d.mag)).toFixed(1) : '—';
   document.getElementById('anProm').textContent = (datos.length/dias).toFixed(dias>1?0:0);
 
+  if(datos._arch){
+    notaEl.textContent += t('archNota').replace('{n}', datos._arch);
+  }
   document.getElementById('anLoading').style.display = 'none';
   document.getElementById('anBody').style.display = 'block';
   dibujarDispersion(datos, dias);
@@ -1207,7 +1215,33 @@ try{
   enlaceProfundo = h.get('evento');
 }catch(e){}
 
-function resolverEnlaceProfundo(){
+/* ================= archivo histórico propio ================= */
+const archCache = {};
+
+/** Lee el catálogo histórico (hoja de cálculo vía Apps Script). */
+async function fetchArchivo(opts){
+  const p = new URLSearchParams({archivo:'1'});
+  if(opts.dias)   p.set('dias', opts.dias);
+  if(opts.minmag) p.set('minmag', opts.minmag);
+  if(opts.fuente) p.set('fuente', opts.fuente);
+  if(opts.id)     p.set('id', opts.id);
+  const url = ARCHIVO_API + '?' + p.toString();
+  if(archCache[url]) return archCache[url];
+
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('archivo '+r.status);
+  const j = await r.json();
+  // filas compactas: [id, fuente, t, mag, lat, lon, prof, lugar]
+  const lista = (j.rows||[]).map(f=>({
+    id:f[0], src:f[1], time:f[2], mag:f[3],
+    lat:f[4], lon:f[5], depth:f[6], place:f[7],
+    url:f[1]==='FUNVISIS' ? 'http://www.funvisis.gob.ve' : ''
+  })).filter(q=>isFinite(q.lat)&&isFinite(q.lon)&&q.mag>0&&q.time);
+  archCache[url] = lista;
+  return lista;
+}
+
+async function resolverEnlaceProfundo(){
   if(!enlaceProfundo) return;
   const id = enlaceProfundo;
   enlaceProfundo = null;
@@ -1215,7 +1249,19 @@ function resolverEnlaceProfundo(){
   if(q){
     selectQuake(q, true);
   } else {
+    // no está en la ventana de 24 h: buscarlo en el archivo histórico
     const st = document.getElementById('status');
+    st.textContent = t('buscandoArch'); st.classList.add('on');
+    try{
+      const enc = await fetchArchivo({id});
+      if(enc.length){
+        allQuakes.push(enc[0]);
+        st.classList.remove('on');
+        selectQuake(enc[0], true);
+        return;
+      }
+    }catch(e){}
+    // tampoco está en el archivo
     st.textContent = t('enlaceviejo');
     st.classList.add('on');
     setTimeout(()=>st.classList.remove('on'), 8000);
@@ -1323,10 +1369,12 @@ const I18N = {
     vigilando:'✓ Vigilando un radio de {r} km.',
     nogeo:'Este navegador no soporta geolocalización — alertas para todo el mundo.',
     analisisT:'Análisis · catálogo USGS', navAnalisis:'Análisis', rango:'Rango', region:'Región',
-    d7:'7 días', d15:'15 días', consultando:'Consultando catálogo USGS…', promdia:'prom./día',
+    d7:'7 días', d15:'15 días', d30:'30 días', consultando:'Consultando catálogo USGS…', promdia:'prom./día',
     magTiempo:'Magnitud vs tiempo', porDia:'Eventos por día',
     analNota:'Fuente: catálogo FDSN de USGS, consultado al abrir. Rangos amplios aplican magnitud mínima {m} para mantener la carga razonable; Venezuela y Caribe se consultan sin piso de magnitud.',
     analError:'No se pudo consultar el catálogo USGS. Revisa tu conexión e intenta de nuevo.',
+    archNota:' · {n} eventos aportados por tu archivo histórico propio (incluye microsismicidad FUNVISIS).',
+    buscandoArch:'Buscando en el archivo histórico…',
     tuubicacion:'Tu ubicación (tiempo real)', satError:'No se pudo cargar el mapa satelital.',
     capaDetalle:'Capa: máximo detalle (mosaico Esri)', capaAyer:'Capa: imagen de ayer (NASA VIIRS, ~375 m/píxel)',
     rMundo:'Mundo', rVen:'Venezuela', rCaribe:'Caribe', rSud:'Sudamérica',
@@ -1362,10 +1410,12 @@ const I18N = {
     vigilando:'✓ Watching a {r} km radius.',
     nogeo:'This browser does not support geolocation — worldwide alerts.',
     analisisT:'Analysis · USGS catalog', navAnalisis:'Analysis', rango:'Range', region:'Region',
-    d7:'7 days', d15:'15 days', consultando:'Querying USGS catalog…', promdia:'avg/day',
+    d7:'7 days', d15:'15 days', d30:'30 days', consultando:'Querying USGS catalog…', promdia:'avg/day',
     magTiempo:'Magnitude vs time', porDia:'Events per day',
     analNota:'Source: USGS FDSN catalog, queried on open. Wide ranges apply a minimum magnitude of {m} to keep the payload reasonable; Venezuela and the Caribbean are queried with no magnitude floor.',
     analError:'Could not query the USGS catalog. Check your connection and try again.',
+    archNota:' · {n} events contributed by your own historical archive (includes FUNVISIS microseismicity).',
+    buscandoArch:'Searching the historical archive…',
     tuubicacion:'Your location (live)', satError:'Could not load the satellite map.',
     capaDetalle:'Layer: max detail (Esri mosaic)', capaAyer:'Layer: yesterday\'s image (NASA VIIRS, ~375 m/px)',
     rMundo:'World', rVen:'Venezuela', rCaribe:'Caribbean', rSud:'South America',

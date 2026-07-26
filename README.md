@@ -63,7 +63,7 @@ Al actualizar `index.html`, incrementa `VERSION` en `sw.js` para que las instala
 
 ## 🗺 Hoja de ruta
 
-- [ ] Lectura del archivo histórico desde la web (rangos de 7/30 días)
+- [x] Lectura del archivo histórico desde la web (rangos de 7/30 días)
 - [ ] Replay animado de enjambres sísmicos
 - [ ] Integración de avisos de tsunami y nivel PAGER (USGS)
 - [ ] Notificaciones push con la app cerrada
