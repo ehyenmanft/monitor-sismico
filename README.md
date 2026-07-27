@@ -22,6 +22,7 @@
 - **Avisos de tsunami y nivel PAGER** de impacto estimado (USGS), más número de reportes ciudadanos.
 - **Vista satelital** con seguimiento GPS en tiempo real y capa diaria de la NASA, sin claves de API.
 - **Análisis histórico** con gráficas de magnitud y frecuencia hasta 30 días, filtrable por región.
+- **Replay animado**: reproduce la secuencia de sismos sobre el globo, con control de velocidad y búsqueda.
 - **Canal de Telegram** con validación cruzada entre redes, imagen del epicentro y pin de mapa.
 - **Responsive**: interfaz de hojas deslizables y navegación inferior en móvil.
 
@@ -70,7 +71,7 @@ Al actualizar `index.html`, incrementa `VERSION` en `sw.js` para que las instala
 ## 🗺 Hoja de ruta
 
 - [x] Lectura del archivo histórico desde la web (rangos de 7/30 días)
-- [ ] Replay animado de enjambres sísmicos
+- [x] Replay animado de enjambres sísmicos
 - [ ] Rendimiento en equipos modestos (geometría instanciada)
 - [x] Integración de avisos de tsunami y nivel PAGER (USGS)
 - [ ] Notificaciones push con la app cerrada

@@ -60,6 +60,40 @@ body{
 @keyframes alertPulse{0%,100%{border-color:var(--m4)}50%{border-color:#ffd9db}}
 @media (prefers-reduced-motion:reduce){ #alertBanner{animation:none} }
 
+/* barra de reproducción */
+#rpBar{
+  display:none;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  z-index:28;width:min(680px,94vw);
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  backdrop-filter:blur(10px);padding:11px 14px;
+}
+#rpBar.on{display:block}
+#rpBar .rptop{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+#rpBar button{
+  background:#161d26;color:var(--text);border:1px solid var(--line);border-radius:7px;
+  font-family:inherit;font-size:12px;cursor:pointer;padding:5px 10px;
+}
+#rpBar button:hover{border-color:var(--accent)}
+#rpPlay{min-width:38px;font-size:13px}
+#rpBar select{
+  background:#161d26;color:var(--text);border:1px solid var(--line);border-radius:6px;
+  font-family:inherit;font-size:11px;padding:4px 6px;
+}
+#rpFecha{font-size:12px;font-weight:700;letter-spacing:.04em}
+#rpCount{margin-left:auto;font-size:10px;color:var(--muted);text-align:right;line-height:1.4}
+#rpClose{margin-left:6px}
+#rpProg{height:8px;background:#161d26;border-radius:4px;cursor:pointer;position:relative;overflow:hidden}
+#rpFill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#3ec6a8,#e8b23c,#f07f3c);border-radius:4px}
+#rpStart{width:100%;margin-top:12px;padding:9px;background:#161d26;color:var(--text);
+  border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer}
+#rpStart:hover{border-color:var(--accent)}
+@media (max-width:820px){
+  #rpBar{bottom:64px;padding:9px 11px}
+  #rpBar .rptop{gap:7px;flex-wrap:wrap}
+  #rpCount{width:100%;text-align:left;margin-left:0}
+}
+body.kiosko #rpBar{display:none !important}
+
 /* panel informativo */
 #info{
   display:none;position:fixed;z-index:27;
@@ -490,8 +524,24 @@ header .src a{color:var(--muted)}
     <canvas id="chMag" height="190"></canvas>
     <h3 data-i18n="porDia">Eventos por día</h3>
     <canvas id="chDia" height="150"></canvas>
+    <button id="rpStart" data-i18n="reproducir">▶ Reproducir en el globo</button>
   </div>
   <div class="anota" id="anNota"></div>
+</div>
+
+<div id="rpBar">
+  <div class="rptop">
+    <button id="rpPlay">⏸</button>
+    <button id="rpRestart" title="Reiniciar">↺</button>
+    <select id="rpSpeed">
+      <option value="1">1×</option><option value="2" selected>2×</option>
+      <option value="4">4×</option><option value="8">8×</option>
+    </select>
+    <span id="rpFecha">—</span>
+    <span id="rpCount"></span>
+    <button id="rpClose" title="Salir">✕</button>
+  </div>
+  <div id="rpProg"><div id="rpFill"></div></div>
 </div>
 
 <div class="panel" id="info">
@@ -998,6 +1048,7 @@ const REGIONES = {
   rOce:    {minlat:-50,  maxlat:0,   minlon:110,  maxlon:180}
 };
 const anCache = {};
+let anUltimos = [];   // último conjunto cargado en el análisis (lo usa el replay)
 
 function llenarRegiones(){
   const sel = document.getElementById('anRegion');
@@ -1094,6 +1145,7 @@ async function cargarAnalisis(){
   if(datos._arch){
     notaEl.textContent += t('archNota').replace('{n}', datos._arch);
   }
+  anUltimos = datos;
   document.getElementById('anLoading').style.display = 'none';
   document.getElementById('anBody').style.display = 'block';
   dibujarDispersion(datos, dias);
@@ -1421,6 +1473,142 @@ function renderTimeline(){
    Si se deja vacío, el bloque del canal se oculta automáticamente.        */
 const CANAL_TELEGRAM = 'https://t.me/sismomonitorve';
 
+/* ================= reproducción animada (replay) ================= */
+let rpActivo=false, rpPausa=false, rpDatos=[], rpIdx=0, rpReloj=0, rpT0=0, rpT1=0;
+let rpVel=2, rpUltimoUI=0;
+const rpGrupo = new THREE.Group();
+globe.add(rpGrupo);
+const RP_DUR_BASE = 45;   // segundos de reloj real para recorrer todo el rango a 1×
+
+/* geometrías y materiales compartidos por banda: mantiene bajo el coste en móviles */
+const rpBandas = [
+  {max:2.5, r:0.9,  col:0x3ec6a8},
+  {max:4.5, r:1.5,  col:0xe8b23c},
+  {max:6.0, r:2.3,  col:0xf07f3c},
+  {max:99,  r:3.2,  col:0xe8484f}
+].map(b=>({
+  ...b,
+  geo: new THREE.SphereGeometry(b.r, 6, 6),
+  mat: new THREE.MeshBasicMaterial({color:b.col})
+}));
+const rpBanda = m => rpBandas.find(b=>m < b.max) || rpBandas[3];
+
+function rpIniciar(datos, regK){
+  const lista = (datos||[]).filter(d=>isFinite(d.lat)&&isFinite(d.lon)&&d.time)
+                           .sort((a,b)=>a.time-b.time);
+  if(!lista.length){
+    const st=document.getElementById('status');
+    st.textContent=t('rpVacio'); st.classList.add('on');
+    setTimeout(()=>st.classList.remove('on'),5000);
+    return;
+  }
+  cerrarAnalisis(); cerrarInfo(); cerrarHojas();
+  if(typeof cerrarSat==='function') cerrarSat();
+  document.getElementById('detail').classList.remove('on');
+
+  rpDatos = lista;
+  rpT0 = lista[0].time;
+  rpT1 = lista[lista.length-1].time;
+  rpLimpiar();
+  rpActivo = true; rpPausa = false;
+  rpReloj = rpT0;
+  markerGroup.visible = false;          // ocultar los marcadores en vivo
+  document.getElementById('rpBar').classList.add('on');
+  document.getElementById('rpPlay').textContent = '⏸';
+
+  // orientar el globo hacia la región reproducida
+  const reg = REGIONES[regK];
+  if(reg){
+    flyTo((reg.minlat+reg.maxlat)/2, (reg.minlon+reg.maxlon)/2);
+  } else {
+    const mLat = lista.reduce((a,d)=>a+d.lat,0)/lista.length;
+    const mLon = lista.reduce((a,d)=>a+d.lon,0)/lista.length;
+    flyTo(mLat, mLon);
+  }
+  rpActualizarUI(true);
+}
+
+function rpLimpiar(){
+  rpGrupo.clear();
+  rpIdx = 0;
+}
+
+function rpSalir(){
+  rpActivo = false;
+  rpLimpiar();
+  markerGroup.visible = true;
+  document.getElementById('rpBar').classList.remove('on');
+}
+
+/* añade al globo los eventos cuya hora ya pasó */
+function rpAvanzar(){
+  while(rpIdx < rpDatos.length && rpDatos[rpIdx].time <= rpReloj){
+    const d = rpDatos[rpIdx];
+    const b = rpBanda(d.mag);
+    const m = new THREE.Mesh(b.geo, b.mat);
+    m.position.copy(latLonToV3(d.lat, d.lon, R*1.004));
+    m.userData.nace = performance.now();
+    m.scale.setScalar(0.01);
+    rpGrupo.add(m);
+    rpIdx++;
+  }
+}
+
+/* animación de aparición: un "pop" breve y luego tamaño estable */
+function rpAnimarPops(ahora){
+  for(let i=rpGrupo.children.length-1; i>=0; i--){
+    const m = rpGrupo.children[i];
+    const edad = ahora - m.userData.nace;
+    if(edad > 700){ if(m.scale.x!==1) m.scale.setScalar(1); continue; }
+    const p = edad/700;
+    m.scale.setScalar(p<0.35 ? (p/0.35)*1.9 : 1.9-(p-0.35)/0.65*0.9);
+  }
+}
+
+function rpActualizarUI(forzar){
+  const ahora = performance.now();
+  if(!forzar && ahora-rpUltimoUI < 120) return;
+  rpUltimoUI = ahora;
+  const prog = (rpReloj-rpT0)/Math.max(1,(rpT1-rpT0));
+  document.getElementById('rpFill').style.width = Math.min(100, prog*100)+'%';
+  document.getElementById('rpFecha').textContent =
+    new Date(rpReloj).toLocaleString(LANG==='en'?'en-GB':'es',
+      {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('rpCount').textContent =
+    t('rpEventos').replace('{n}', rpIdx).replace('{tot}', rpDatos.length);
+}
+
+/* saltar a una posición del recorrido */
+function rpBuscar(frac){
+  rpReloj = rpT0 + (rpT1-rpT0)*Math.max(0,Math.min(1,frac));
+  rpLimpiar();          // reconstruir desde el inicio hasta ese punto
+  rpAvanzar();
+  rpGrupo.children.forEach(m=>{ m.userData.nace = 0; m.scale.setScalar(1); });
+  rpActualizarUI(true);
+}
+
+/* controles */
+document.getElementById('rpStart').addEventListener('click', ()=>{
+  rpIniciar(anUltimos, document.getElementById('anRegion').value);
+});
+document.getElementById('rpPlay').addEventListener('click', ()=>{
+  rpPausa = !rpPausa;
+  document.getElementById('rpPlay').textContent = rpPausa ? '▶' : '⏸';
+});
+document.getElementById('rpRestart').addEventListener('click', ()=>{
+  rpReloj = rpT0; rpLimpiar(); rpPausa = false;
+  document.getElementById('rpPlay').textContent = '⏸';
+  rpActualizarUI(true);
+});
+document.getElementById('rpSpeed').addEventListener('change', e=>{ rpVel = parseFloat(e.target.value); });
+document.getElementById('rpClose').addEventListener('click', rpSalir);
+document.getElementById('rpProg').addEventListener('click', e=>{
+  const r = e.currentTarget.getBoundingClientRect();
+  rpBuscar((e.clientX-r.left)/r.width);
+});
+
+/* ================= reproducción animada (fin) ================= */
+
 /* ================= panel informativo ================= */
 function abrirInfo(){
   cerrarHojas();
@@ -1481,6 +1669,8 @@ const I18N = {
     analError:'No se pudieron cargar los datos. Revisa tu conexión e intenta de nuevo.',
     archNota:' Incluye {n} sismos menores detectados por la red local.',
     buscandoArch:'Buscando el sismo…',
+    reproducir:'▶ Reproducir en el globo',
+    rpEventos:'{n} de {tot} sismos', rpVacio:'No hay datos para reproducir en este rango.',
     infoT:'Qué es SISMO·MONITOR',
     infoQue:'Un panel gratuito que muestra los sismos registrados en el mundo, minuto a minuto, con especial atención a Venezuela y el Caribe. Toca cualquier punto del globo o de la lista para ver los detalles del sismo.',
     infoCanalT:'Canal de avisos en Telegram',
@@ -1537,6 +1727,8 @@ const I18N = {
     analError:'Could not load the data. Check your connection and try again.',
     archNota:' Includes {n} smaller earthquakes detected by the local network.',
     buscandoArch:'Looking for the earthquake…',
+    reproducir:'▶ Play on the globe',
+    rpEventos:'{n} of {tot} earthquakes', rpVacio:'No data to play in this range.',
     infoT:'What is SISMO·MONITOR',
     infoQue:'A free dashboard showing earthquakes registered worldwide, minute by minute, with special attention to Venezuela and the Caribbean. Tap any point on the globe or in the list to see the details.',
     infoCanalT:'Telegram alert channel',
@@ -1979,6 +2171,21 @@ function animate(){
 
   camDist += (targetDist-camDist)*0.1;
   camera.position.z = camDist;
+
+  // reproducción animada
+  if(rpActivo){
+    const nowMs = performance.now();
+    if(!rpPausa){
+      const dtSeg = t - (animate._trp ?? t);
+      rpReloj += (rpT1-rpT0) * (dtSeg / (RP_DUR_BASE/rpVel));
+      if(rpReloj >= rpT1){ rpReloj = rpT1; rpPausa = true;
+        document.getElementById('rpPlay').textContent = '▶'; }
+      rpAvanzar();
+      rpActualizarUI(false);
+    }
+    rpAnimarPops(nowMs);
+  }
+  animate._trp = t;
 
   // pulso de anillos
   markers.forEach(m=>{
