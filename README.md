@@ -3,6 +3,7 @@
 **Panel de monitoreo sísmico mundial en tiempo real** — globo 3D interactivo alimentado por USGS, FUNVISIS (Venezuela) y EMSC, con alertas configurables, modo bilingüe e instalable como app.
 
 **▶ Demo en vivo: https://ehyenmanft.github.io/monitor-sismico/**
+**📣 Canal de avisos en Telegram: https://t.me/sismomonitorve**
 
 > Este proyecto nació de la experiencia del terremoto de La Guaira de 2026. Es la herramienta que su autor hubiera querido tener ese día: gratuita, en español, y con los datos sísmicos venezolanos que ninguna app internacional muestra.
 
@@ -18,6 +19,10 @@
 - **Compartir**: enlace profundo por evento (`#evento=id`) y tarjeta PNG generada al vuelo con mini-mapa regional — pensada para WhatsApp.
 - **PWA instalable**: funciona como app en Android/iOS, carga instantánea, cascarón disponible sin conexión (los datos siempre vienen frescos de la red, nunca de caché).
 - **Bilingüe** español/inglés con un clic. **Modo kiosko** para pantallas de monitoreo.
+- **Avisos de tsunami y nivel PAGER** de impacto estimado (USGS), más número de reportes ciudadanos.
+- **Vista satelital** con seguimiento GPS en tiempo real y capa diaria de la NASA, sin claves de API.
+- **Análisis histórico** con gráficas de magnitud y frecuencia hasta 30 días, filtrable por región.
+- **Canal de Telegram** con validación cruzada entre redes, imagen del epicentro y pin de mapa.
 - **Responsive**: interfaz de hojas deslizables y navegación inferior en móvil.
 
 ## 🔌 Fuentes de datos
@@ -47,7 +52,8 @@ Navegador (index.html — archivo único, sin build)
         (mismo proyecto de Apps Script)
                      │
  vigilarSismos (trigger cada 5 min) ──► Hoja de cálculo (archivo histórico)
-                                    └─► Bot de Telegram (alertas 24/7)
+                                    ├─► Canal de Telegram (avisos 24/7)
+                                    └─► API del archivo (?archivo=1) ──► web
 ```
 
 Todo corre en infraestructura gratuita: GitHub Pages + Google Apps Script. Sin servidores, sin claves de API, sin costos.
@@ -65,7 +71,8 @@ Al actualizar `index.html`, incrementa `VERSION` en `sw.js` para que las instala
 
 - [x] Lectura del archivo histórico desde la web (rangos de 7/30 días)
 - [ ] Replay animado de enjambres sísmicos
-- [ ] Integración de avisos de tsunami y nivel PAGER (USGS)
+- [ ] Rendimiento en equipos modestos (geometría instanciada)
+- [x] Integración de avisos de tsunami y nivel PAGER (USGS)
 - [ ] Notificaciones push con la app cerrada
 - [ ] Mejoras de accesibilidad
 
@@ -85,4 +92,4 @@ MIT — libre para usar, modificar y redistribuir.
 
 Born from the 2026 La Guaira earthquake, it solves a real gap: Venezuela's seismological agency has no public API, so this project includes an open Google Apps Script proxy that normalizes its unstable, undocumented data feed using content-based validation — an approach reusable for any country with closed seismic data. The full stack (GitHub Pages + Apps Script + optional Telegram bot for 24/7 alerts and a Google Sheets historical archive) runs entirely on free infrastructure.
 
-Live demo: **https://ehyenmanft.github.io/monitor-sismico/** · License: MIT
+Live demo: **https://ehyenmanft.github.io/monitor-sismico/** · Telegram channel: **https://t.me/sismomonitorve** · License: MIT
