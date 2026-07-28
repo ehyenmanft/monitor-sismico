@@ -508,7 +508,7 @@ header .src a{color:var(--muted)}
     <span data-i18n="rango" style="color:var(--muted);font-size:11px">Rango</span>
     <select id="anRango">
       <option value="1">24 h</option><option value="3">3 d</option>
-      <option value="7" selected data-i18n="d7">7 días</option><option value="15" data-i18n="d15">15 días</option><option value="30" data-i18n="d30">30 días</option>
+      <option value="7" selected data-i18n="d7">7 días</option><option value="15" data-i18n="d15">15 días</option><option value="30" data-i18n="d30">30 días</option><option value="60" data-i18n="d60">60 días</option><option value="desde" data-i18n="dDesde">Desde el 24/6/2026</option>
     </select>
     <span data-i18n="region" style="color:var(--muted);font-size:11px">Región</span>
     <select id="anRegion"></select>
@@ -1085,15 +1085,24 @@ document.getElementById('anClose').addEventListener('click', cerrarAnalisis);
 document.getElementById('anRango').addEventListener('change', cargarAnalisis);
 document.getElementById('anRegion').addEventListener('change', cargarAnalisis);
 
+/* fecha del terremoto de La Guaira: permite consultar toda la secuencia posterior */
+const FECHA_DESDE = Date.parse('2026-06-24T00:00:00Z');
+/* el archivo propio empieza a registrar microsismicidad local en esta fecha */
+const ARCHIVO_DESDE = Date.parse('2026-07-18T00:00:00Z');
+
 async function cargarAnalisis(){
-  const dias = parseInt(document.getElementById('anRango').value);
+  const valor = document.getElementById('anRango').value;
+  const dias = valor === 'desde'
+    ? Math.ceil((Date.now() - FECHA_DESDE)/86400e3)
+    : parseInt(valor);
   const regK = document.getElementById('anRegion').value || 'rMundo';
   const reg = REGIONES[regK];
-  const minMag = (reg && reg.sinPiso) ? 0 : (dias<=1 ? 1.5 : 2.5);
+  // en rangos largos y regiones amplias se eleva el piso para que la consulta sea manejable
+  let minMag = (reg && reg.sinPiso) ? 0 : (dias<=1 ? 1.5 : dias>40 ? 3.5 : 2.5);
   const clave = dias+'|'+regK;
 
   const notaEl = document.getElementById('anNota');
-  notaEl.textContent = t('analNota').replace('{m}', 'M '+(minMag||'0'));
+  notaEl.textContent = t('analNota').replace('{m}', 'M '+(minMag||'0'));  // se recalcula abajo si hubo reintento
   document.getElementById('anBody').style.display = 'none';
   document.getElementById('anLoading').style.display = 'block';
   document.getElementById('anLoading').textContent = t('consultando');
@@ -1101,12 +1110,20 @@ async function cargarAnalisis(){
   let datos = anCache[clave];
   if(!datos){
     try{
-      let url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time'
+      const construirUrl = (piso)=>{
+        let u = 'https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time&limit=20000'
               + '&starttime=' + new Date(Date.now()-dias*86400e3).toISOString()
-              + (minMag ? '&minmagnitude='+minMag : '');
-      if(reg) url += '&minlatitude='+reg.minlat+'&maxlatitude='+reg.maxlat
+              + (piso ? '&minmagnitude='+piso : '');
+        if(reg) u += '&minlatitude='+reg.minlat+'&maxlatitude='+reg.maxlat
                    + '&minlongitude='+reg.minlon+'&maxlongitude='+reg.maxlon;
-      const r = await fetch(url);
+        return u;
+      };
+      let r = await fetch(construirUrl(minMag));
+      // si el rango devuelve demasiados eventos, USGS responde 400: reintentar con piso mayor
+      if(!r.ok && r.status===400){
+        minMag = Math.max(minMag, 0) + 1.5;
+        r = await fetch(construirUrl(minMag));
+      }
       if(!r.ok) throw new Error(r.status);
       const gj = await r.json();
       datos = (gj.features||[])
@@ -1138,12 +1155,16 @@ async function cargarAnalisis(){
   }
 
   // resumen
+  notaEl.textContent = t('analNota').replace('{m}', 'M '+(minMag||'0'));
   document.getElementById('anTotal').textContent = datos.length;
   document.getElementById('anMax').textContent = datos.length ? Math.max(...datos.map(d=>d.mag)).toFixed(1) : '—';
-  document.getElementById('anProm').textContent = (datos.length/dias).toFixed(dias>1?0:0);
+  document.getElementById('anProm').textContent = (datos.length/dias).toFixed(datos.length/dias<10?1:0);
 
   if(datos._arch){
     notaEl.textContent += t('archNota').replace('{n}', datos._arch);
+  }
+  if(Date.now() - dias*86400e3 < ARCHIVO_DESDE){
+    notaEl.textContent += t('notaLocal');
   }
   anUltimos = datos;
   document.getElementById('anLoading').style.display = 'none';
@@ -1663,9 +1684,11 @@ const I18N = {
     vigilando:'✓ Vigilando un radio de {r} km.',
     nogeo:'Este navegador no soporta geolocalización — alertas para todo el mundo.',
     analisisT:'Análisis histórico', navAnalisis:'Análisis', rango:'Rango', region:'Región',
-    d7:'7 días', d15:'15 días', d30:'30 días', consultando:'Consultando catálogo USGS…', promdia:'prom./día',
+    d7:'7 días', d15:'15 días', d30:'30 días', d60:'60 días',
+    dDesde:'Desde el 24/6/2026', consultando:'Consultando catálogo USGS…', promdia:'prom./día',
     magTiempo:'Magnitud vs tiempo', porDia:'Eventos por día',
     analNota:'Datos de las redes sismológicas oficiales. En esta vista se incluyen sismos desde {m}.',
+    notaLocal:' El registro detallado de sismos menores en Venezuela comienza el 18/7/2026.',
     analError:'No se pudieron cargar los datos. Revisa tu conexión e intenta de nuevo.',
     archNota:' Incluye {n} sismos menores detectados por la red local.',
     buscandoArch:'Buscando el sismo…',
@@ -1721,9 +1744,11 @@ const I18N = {
     vigilando:'✓ Watching a {r} km radius.',
     nogeo:'This browser does not support geolocation — worldwide alerts.',
     analisisT:'Historical analysis', navAnalisis:'Analysis', rango:'Range', region:'Region',
-    d7:'7 days', d15:'15 days', d30:'30 days', consultando:'Querying USGS catalog…', promdia:'avg/day',
+    d7:'7 days', d15:'15 days', d30:'30 days', d60:'60 days',
+    dDesde:'Since 24 Jun 2026', consultando:'Querying USGS catalog…', promdia:'avg/day',
     magTiempo:'Magnitude vs time', porDia:'Events per day',
     analNota:'Data from official seismic networks. This view includes earthquakes from {m} upward.',
+    notaLocal:' Detailed recording of smaller Venezuelan earthquakes starts on 18 Jul 2026.',
     analError:'Could not load the data. Check your connection and try again.',
     archNota:' Includes {n} smaller earthquakes detected by the local network.',
     buscandoArch:'Looking for the earthquake…',
