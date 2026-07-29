@@ -84,6 +84,18 @@ body{
 #rpClose{margin-left:6px}
 #rpProg{height:8px;background:#161d26;border-radius:4px;cursor:pointer;position:relative;overflow:hidden}
 #rpFill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#3ec6a8,#e8b23c,#f07f3c);border-radius:4px}
+#anList{
+  max-height:230px;overflow-y:auto;margin:0 -4px;padding:0 4px;
+  border:1px solid var(--line);border-radius:8px;padding:6px 6px 2px;background:#0d1218;
+}
+#anList::-webkit-scrollbar{width:5px}
+#anList::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+#anList .quake{margin-bottom:4px}
+#anList .quake.sel{border-color:var(--accent);background:#1b2430}
+#anMas{width:100%;margin-top:7px;padding:6px;background:#161d26;color:var(--muted);
+  border:1px solid var(--line);border-radius:7px;font-family:inherit;font-size:10.5px;cursor:pointer}
+#anMas:hover{border-color:var(--accent);color:var(--text)}
+#chMag,#chDia{cursor:crosshair}
 #rpStart{width:100%;margin-top:12px;padding:9px;background:#161d26;color:var(--text);
   border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:12px;cursor:pointer}
 #rpStart:hover{border-color:var(--accent)}
@@ -524,6 +536,9 @@ header .src a{color:var(--muted)}
     <canvas id="chMag" height="190"></canvas>
     <h3 data-i18n="porDia">Eventos por día</h3>
     <canvas id="chDia" height="150"></canvas>
+    <h3><span data-i18n="listaPeriodo">Eventos del período</span> <span id="anListCount" style="float:right;color:var(--text)"></span></h3>
+    <div id="anList"></div>
+    <button id="anMas" data-i18n="mostrarMas">Mostrar más</button>
     <button id="rpStart" data-i18n="reproducir">▶ Reproducir en el globo</button>
   </div>
   <div class="anota" id="anNota"></div>
@@ -867,7 +882,9 @@ Object.keys(hojas).forEach(id=>{
   document.getElementById(id).onclick = ()=>alternarHoja(id);
 });
 
+let selectedQ = null;
 function selectQuake(q, fly){
+  selectedQ = q;
   selectedId = q.id;
   document.querySelectorAll('.quake').forEach(el=>el.classList.toggle('sel', el.dataset.id===q.id));
   const el = document.querySelector(`.quake[data-id="${q.id}"]`);
@@ -916,7 +933,7 @@ function urlEvento(q){
   return location.origin + location.pathname + location.search + '#evento=' + encodeURIComponent(q.id);
 }
 document.getElementById('dshare').addEventListener('click', async ()=>{
-  const q = allQuakes.find(x=>x.id===selectedId);
+  const q = selectedQ || allQuakes.find(x=>x.id===selectedId);
   if(!q) return;
   const texto = '⚠ '+t('sismo')+' M '+q.mag.toFixed(1)+' — '+q.place+' — '+fmtTime(q.time)+' ('+q.src+')';
   const url = urlEvento(q);
@@ -1014,7 +1031,7 @@ function generarTarjeta(q){
 }
 
 document.getElementById('dcard').addEventListener('click', async ()=>{
-  const q = allQuakes.find(x=>x.id===selectedId);
+  const q = selectedQ || allQuakes.find(x=>x.id===selectedId);
   if(!q) return;
   const btn = document.getElementById('dcard');
   btn.textContent = '…';
@@ -1128,8 +1145,16 @@ async function cargarAnalisis(){
       const gj = await r.json();
       datos = (gj.features||[])
         .filter(f=>f.properties.mag!=null)
-        .map(f=>({mag:f.properties.mag, time:f.properties.time,
-                  lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0]}));
+        .map(f=>({
+          id:f.id, src:'USGS',
+          mag:f.properties.mag, time:f.properties.time,
+          place:f.properties.place||'—',
+          depth:f.geometry.coordinates[2]||0,
+          url:f.properties.url,
+          tsunami:f.properties.tsunami===1,
+          pager:f.properties.alert||null, felt:f.properties.felt||null,
+          lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0]
+        }));
       // complementar con el archivo histórico propio (hoja de cálculo):
       // aporta la microsismicidad FUNVISIS que USGS no cataloga, en todo el rango
       let aporteArchivo = 0;
@@ -1143,7 +1168,10 @@ async function cargarAnalisis(){
             Math.abs(d.lat-a.lat) < 0.5 &&
             Math.abs(d.lon-a.lon) < 0.5
           );
-          if(!dup){ datos.push({mag:a.mag, time:a.time, lat:a.lat, lon:a.lon}); aporteArchivo++; }
+          if(!dup){ datos.push({
+            id:a.id, src:a.src, mag:a.mag, time:a.time, place:a.place,
+            depth:a.depth, url:a.url, lat:a.lat, lon:a.lon
+          }); aporteArchivo++; }
         });
       }catch(e){ /* sin archivo, la gráfica queda solo con USGS */ }
       datos._arch = aporteArchivo;
@@ -1167,6 +1195,8 @@ async function cargarAnalisis(){
     notaEl.textContent += t('notaLocal');
   }
   anUltimos = datos;
+  anLista = datos.slice().sort((a,b)=>b.time-a.time);   // más reciente primero
+  anRenderLista(true);
   document.getElementById('anLoading').style.display = 'none';
   document.getElementById('anBody').style.display = 'block';
   dibujarDispersion(datos, dias);
@@ -1212,6 +1242,8 @@ function dibujarDispersion(datos, dias){
     c.fillText('M'+m, 6, y+3);
   }
   ejeTiempo(c, w, h, desde, ahora, dias);
+  anPuntos = [];
+  const idx = new Map(anLista.map((q,i)=>[q, i]));
   datos.forEach(d=>{
     const x = 34 + (d.time-desde)/(ahora-desde)*(w-44);
     if(x<34) return;
@@ -1221,6 +1253,8 @@ function dibujarDispersion(datos, dias){
     c.fillStyle = bandaColor(d.mag);
     c.globalAlpha = d.mag>=4.5 ? .95 : .55;
     c.fill();
+    const i = idx.get(d);
+    if(i !== undefined) anPuntos.push({x, y, i});
   });
   c.globalAlpha = 1;
 }
@@ -1238,6 +1272,15 @@ function dibujarBarrasDia(datos, dias){
   });
   const maxT = Math.max(1, ...buckets.map(b=>b.b1+b.b2+b.b3+b.b4));
   const bw = (w-44)/nB;
+  // zonas sensibles al clic: cada barra apunta al primer sismo de ese tramo
+  anDias = buckets.map((b,i)=>{
+    const t0 = desde + (ahora-desde)*i/nB, t1 = desde + (ahora-desde)*(i+1)/nB;
+    let primero = -1;
+    for(let k=0;k<anLista.length;k++){
+      if(anLista[k].time >= t0 && anLista[k].time < t1){ primero = k; break; }
+    }
+    return {x0: 34+i*bw, x1: 34+(i+1)*bw, primero};
+  });
   buckets.forEach((b,i)=>{
     const x = 34 + i*bw;
     let y = h-18;
@@ -1494,6 +1537,71 @@ function renderTimeline(){
    Si se deja vacío, el bloque del canal se oculta automáticamente.        */
 const CANAL_TELEGRAM = 'https://t.me/sismomonitorve';
 
+/* ---------- lista de eventos del período ---------- */
+let anLista = [], anRender = 0, anPuntos = [], anDias = [];
+const AN_LOTE = 120;
+
+function anRenderLista(reset){
+  const cont = document.getElementById('anList');
+  if(reset){ cont.innerHTML = ''; anRender = 0; }
+  const hasta = Math.min(anLista.length, anRender + AN_LOTE);
+  for(let i=anRender; i<hasta; i++){
+    const q = anLista[i];
+    const d = document.createElement('div');
+    d.className = 'quake';
+    d.dataset.id = q.id || ('an-'+i);
+    d.innerHTML = `
+      <div class="qmag" style="background:${magCss(q.mag)}">${q.mag.toFixed(1)}</div>
+      <div class="qinfo">
+        <div class="qplace">${q.tsunami?'<span class="tsubadge">🌊 </span>':''}${q.place||'—'}</div>
+        <div class="qmeta">${fmtTime(q.time)} · ${t('prof')} ${(q.depth||0).toFixed(0)} km · <span style="color:${q.src==='FUNVISIS'?'var(--accent)':'var(--muted)'}">${q.src||''}</span></div>
+      </div>`;
+    d.onclick = ()=>{
+      anMarcar(i);
+      selectQuake(q, true);
+      if(esMovil()) cerrarAnalisis();
+    };
+    cont.appendChild(d);
+  }
+  anRender = hasta;
+  document.getElementById('anMas').style.display = anRender < anLista.length ? 'block' : 'none';
+  document.getElementById('anListCount').textContent = anLista.length;
+}
+document.getElementById('anMas').addEventListener('click', ()=>anRenderLista(false));
+
+/* resalta el evento i de la lista y lo trae a la vista */
+function anMarcar(i){
+  while(i >= anRender && anRender < anLista.length) anRenderLista(false);
+  const cont = document.getElementById('anList');
+  cont.querySelectorAll('.quake.sel').forEach(el=>el.classList.remove('sel'));
+  const el = cont.children[i];
+  if(!el) return;
+  el.classList.add('sel');
+  el.scrollIntoView({block:'nearest', behavior:'smooth'});
+}
+
+/* clic en la dispersión: localizar el sismo más cercano al cursor */
+document.getElementById('chMag').addEventListener('click', e=>{
+  if(!anPuntos.length) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  let mejor = -1, mejorD = 22;
+  anPuntos.forEach(p=>{
+    const d = Math.hypot(p.x-x, p.y-y);
+    if(d < mejorD){ mejorD = d; mejor = p.i; }
+  });
+  if(mejor >= 0){ anMarcar(mejor); selectQuake(anLista[mejor], true); }
+});
+
+/* clic en las barras: saltar al primer sismo de ese día */
+document.getElementById('chDia').addEventListener('click', e=>{
+  if(!anDias.length) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const b = anDias.find(d => x >= d.x0 && x < d.x1);
+  if(b && b.primero >= 0) anMarcar(b.primero);
+});
+
 /* ================= reproducción animada (replay) ================= */
 let rpActivo=false, rpPausa=false, rpDatos=[], rpIdx=0, rpReloj=0, rpT0=0, rpT1=0;
 let rpVel=2, rpUltimoUI=0;
@@ -1692,6 +1800,7 @@ const I18N = {
     analError:'No se pudieron cargar los datos. Revisa tu conexión e intenta de nuevo.',
     archNota:' Incluye {n} sismos menores detectados por la red local.',
     buscandoArch:'Buscando el sismo…',
+    listaPeriodo:'Eventos del período', mostrarMas:'Mostrar más',
     reproducir:'▶ Reproducir en el globo',
     rpEventos:'{n} de {tot} sismos', rpVacio:'No hay datos para reproducir en este rango.',
     infoT:'Qué es SISMO·MONITOR',
@@ -1752,6 +1861,7 @@ const I18N = {
     analError:'Could not load the data. Check your connection and try again.',
     archNota:' Includes {n} smaller earthquakes detected by the local network.',
     buscandoArch:'Looking for the earthquake…',
+    listaPeriodo:'Events in this period', mostrarMas:'Show more',
     reproducir:'▶ Play on the globe',
     rpEventos:'{n} of {tot} earthquakes', rpVacio:'No data to play in this range.',
     infoT:'What is SISMO·MONITOR',
