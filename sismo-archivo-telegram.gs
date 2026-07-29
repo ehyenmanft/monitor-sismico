@@ -49,8 +49,11 @@ var CONFIG = {
   TELEGRAM_CHAT_ID: '',
 
   // --- Criterios de publicación en el CANAL ---
-  CANAL_VEN_MAG_MIN: 3.0,      // sismos en Venezuela/Caribe desde esta magnitud
-  CANAL_MUNDO_MAG_MIN: 5.5,    // sismos del resto del mundo desde esta magnitud
+  CANAL_VEN_MAG_MIN: 3.0,      // sismos dentro de ZONA_LOCAL (ver abajo)
+  CANAL_MUNDO_MAG_MIN: 7.0,    // fuera de la zona: solo grandes terremotos.
+                               // Se deja en 7.0 (y no en 99) a propósito: un M7+
+                               // en la fosa de Puerto Rico o el Atlántico puede
+                               // implicar aviso de tsunami para la costa venezolana.
   CANAL_CON_IMAGEN: true,      // adjuntar vista satelital del epicentro
   CANAL_CON_MAPA: true,        // adjuntar pin de mapa interactivo de Telegram
 
@@ -67,8 +70,16 @@ var CONFIG = {
   ARCHIVAR_TODO: true      // true: guarda TODOS los eventos en la hoja
 };
 
-// Recuadro Venezuela + Caribe: define qué es "sismo local" para el canal
-var ZONA_LOCAL = {minlat: 0.5, maxlat: 20, minlon: -90, maxlon: -58};
+// Zona de cobertura del canal: Venezuela, su mar Caribe y las Antillas cercanas
+// (incluye Aruba–Curazao–Bonaire, Trinidad y Tobago, Granada y Barbados).
+// Queda fuera: República Dominicana, Puerto Rico, Colombia y el Caribe occidental.
+var ZONA_LOCAL = {minlat: 0.5, maxlat: 14.5, minlon: -73.5, maxlon: -59};
+
+// El nido sísmico de Bucaramanga (Colombia) roza el borde oeste del recuadro y
+// produce sismos M3–4 casi a diario. Se omiten del canal salvo que sean
+// significativos (M 4.5+), magnitud a la que sí se sienten en Táchira y Zulia.
+var EXCLUIR_NIDO = {minlat: 6.0, maxlat: 7.6, minlon: -74.2, maxlon: -72.4};
+var EXCLUIR_NIDO_BAJO = 4.5;
 
 var URL_USGS = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
 
@@ -178,6 +189,11 @@ function vigilarSismos() {
 
 /** ¿Este sismo merece publicarse en el canal? */
 function esParaCanal_(e) {
+  // ruido diario del nido de Bucaramanga: fuera del canal salvo que sea fuerte
+  if (e.mag < EXCLUIR_NIDO_BAJO &&
+      e.lat >= EXCLUIR_NIDO.minlat && e.lat <= EXCLUIR_NIDO.maxlat &&
+      e.lon >= EXCLUIR_NIDO.minlon && e.lon <= EXCLUIR_NIDO.maxlon) return false;
+
   var local = e.lat >= ZONA_LOCAL.minlat && e.lat <= ZONA_LOCAL.maxlat &&
               e.lon >= ZONA_LOCAL.minlon && e.lon <= ZONA_LOCAL.maxlon;
   return e.mag >= (local ? CONFIG.CANAL_VEN_MAG_MIN : CONFIG.CANAL_MUNDO_MAG_MIN);
