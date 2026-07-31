@@ -891,10 +891,20 @@ function cerrarHojas(){
   document.querySelectorAll('#mobilenav button').forEach(b=>b.classList.remove('act'));
   document.getElementById('mnGlobo').classList.add('act');
 }
+/* Cierra todos los paneles salvo el indicado. Evita que queden dos
+   superpuestos al saltar entre opciones del menú superior o inferior. */
+function cerrarPaneles(excepto){
+  if(excepto!=='hojas')    cerrarHojas();
+  if(excepto!=='analisis') cerrarAnalisis();
+  if(excepto!=='info')     cerrarInfo();
+  if(excepto!=='sat')      cerrarSat();
+}
+
 function alternarHoja(btnId){
   const id = hojas[btnId];
   const el = document.getElementById(id);
   const abrir = !el.classList.contains('open');
+  cerrarPaneles('hojas');
   cerrarHojas();
   if(abrir){
     el.classList.add('open');
@@ -903,7 +913,7 @@ function alternarHoja(btnId){
     if(id==='timeline') setTimeout(renderTimeline, 300); // el canvas tenía tamaño 0 oculto
   }
 }
-document.getElementById('mnGlobo').onclick = ()=>{ cerrarHojas(); cerrarInfo(); if(typeof cerrarSat==='function') cerrarSat(); };
+document.getElementById('mnGlobo').onclick = ()=>cerrarPaneles();
 Object.keys(hojas).forEach(id=>{
   document.getElementById(id).onclick = ()=>alternarHoja(id);
 });
@@ -1104,7 +1114,7 @@ function llenarRegiones(){
 }
 
 function abrirAnalisis(){
-  cerrarHojas();
+  cerrarPaneles('analisis');
   document.getElementById('analisis').classList.add('on');
   document.getElementById('mnAnal').classList.add('act');
   document.getElementById('mnGlobo').classList.remove('act');
@@ -1346,7 +1356,7 @@ function cargarLeaflet(cb){
 }
 
 function abrirSat(){
-  cerrarHojas(); cerrarAnalisis();
+  cerrarPaneles('sat');
   document.getElementById('satmapa').classList.add('on');
   cargarLeaflet(iniciarSat);
 }
@@ -1402,7 +1412,9 @@ function vigilarUbicacionSat(){
   }, ()=>{}, {enableHighAccuracy:true, maximumAge:5000, timeout:15000});
 }
 function cerrarSat(){
-  document.getElementById('satmapa').classList.remove('on');
+  const el = document.getElementById('satmapa');
+  if(!el) return;
+  el.classList.remove('on');
   if(satWatch!==null){ navigator.geolocation.clearWatch(satWatch); satWatch=null; }
 }
 document.getElementById('satBtn').addEventListener('click', ()=>{
@@ -1766,8 +1778,7 @@ document.getElementById('rpProg').addEventListener('click', e=>{
 
 /* ================= panel informativo ================= */
 function abrirInfo(){
-  cerrarHojas();
-  if(typeof cerrarAnalisis==='function') cerrarAnalisis();
+  cerrarPaneles('info');
   document.getElementById('info').classList.add('on');
 }
 function cerrarInfo(){ document.getElementById('info').classList.remove('on'); }
@@ -1938,9 +1949,7 @@ function alternarMenus(ocultar){
   const b = document.body;
   const oculto = ocultar!==undefined ? ocultar : !b.classList.contains('sinmenus');
   if(oculto){
-    cerrarHojas();
-    if(typeof cerrarAnalisis==='function') cerrarAnalisis();
-    if(typeof cerrarInfo==='function') cerrarInfo();
+    cerrarPaneles();
     b.classList.add('sinmenus');
   } else {
     b.classList.remove('sinmenus');
