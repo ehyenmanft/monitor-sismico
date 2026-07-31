@@ -199,11 +199,18 @@ body{
   background:var(--panel);color:var(--muted);border:1px solid var(--line);
   border-radius:50%;width:36px;height:36px;font-family:inherit;font-size:15px;cursor:pointer;
 }
-/* pantalla completa: se ocultan los paneles acoplados, pero los botones siguen
-   disponibles para poder usar análisis, satélite, idioma, etc. */
-body.kiosko #left, body.kiosko #right, body.kiosko #timeline,
+/* Pantalla completa: al entrar se cierran los paneles acoplados (vía JS), pero
+   NADA queda bloqueado — todos los menús y funciones siguen disponibles y se
+   pueden volver a abrir. Para una vista totalmente limpia está el botón 👁. */
 body.kiosko #hint{display:none !important}
 body.kiosko #kioskExit{display:block}
+
+/* en escritorio, los paneles acoplados flotan sobre el globo en pantalla completa */
+@media (min-width:821px){
+  body.kiosko #left{top:60px}
+  body.kiosko #right{top:60px;bottom:24px}
+  body.kiosko #timeline{bottom:14px}
+}
 
 /* modo sin menús (botón 👁): vista totalmente limpia */
 body.sinmenus header, body.sinmenus #mobilenav, body.sinmenus #kioskExit,
@@ -325,6 +332,9 @@ header .src a{color:var(--muted)}
   margin-bottom:12px;
 }
 #left{left:16px;top:70px;width:250px}
+body.ocultarL #left{display:none}
+body.ocultarR #right{display:none}
+body.ocultarT #timeline{display:none}
 #right{right:16px;top:70px;bottom:120px;width:320px;display:flex;flex-direction:column}
 
 /* stats */
@@ -424,6 +434,7 @@ header .src a{color:var(--muted)}
   header h1{font-size:13px;letter-spacing:.1em;flex:none}
   /* los botones caben siempre: se compactan y, si hiciera falta, saltan de línea */
   header .hctrl{margin-left:auto;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  #pnDatos,#pnEventos,#pnTl{display:none}
   header .hctrl button{padding:5px 8px;font-size:11px;min-width:32px;line-height:1.1}
   /* la atribución de fuentes vive en el panel ℹ; aquí solo la hora de actualización */
   header .src{order:3;width:100%;margin-left:0;text-align:left;font-size:9px;line-height:1.4}
@@ -487,6 +498,9 @@ header .src a{color:var(--muted)}
   <h1>SISMO<span>·</span>MONITOR</h1>
   <div class="hctrl">
     <button id="langBtn" title="English / Español">EN</button>
+    <button id="pnDatos" title="Datos">▤</button>
+    <button id="pnEventos" title="Eventos">≡</button>
+    <button id="pnTl" title="Sismógrafo 24 h">∿</button>
     <button id="eyeBtn" title="Mostrar / ocultar menús">👁</button>
     <button id="infoBtn" title="Información">ℹ</button>
     <button id="satBtn" title="Vista satélite">🛰</button>
@@ -2160,12 +2174,30 @@ function alternarMenus(ocultar){
   }
 }
 document.getElementById('eyeBtn').addEventListener('click', ()=>alternarMenus());
+
+/* en escritorio: mostrar u ocultar cada panel acoplado desde la cabecera */
+[['pnDatos','ocultarL','left'],['pnEventos','ocultarR','right'],['pnTl','ocultarT','timeline']]
+  .forEach(([btn, cls, id])=>{
+    document.getElementById(btn).addEventListener('click', ()=>{
+      if(esMovil()){                       // en móvil equivale a la barra inferior
+        alternarHoja(id==='left'?'mnDatos':id==='right'?'mnEventos':'mnTl');
+        return;
+      }
+      document.body.classList.toggle(cls);
+      document.getElementById(btn).style.color =
+        document.body.classList.contains(cls) ? 'var(--muted)' : 'var(--accent)';
+      if(id==='timeline' && !document.body.classList.contains(cls)) setTimeout(renderTimeline, 60);
+    });
+    // estado inicial: visibles
+    document.getElementById(btn).style.color = 'var(--accent)';
+  });
 document.getElementById('eyeFloat').addEventListener('click', ()=>alternarMenus(false));
 addEventListener('keydown', e=>{
   if(e.key==='Escape' && document.body.classList.contains('sinmenus')) alternarMenus(false);
 });
 
 document.getElementById('kioskBtn').addEventListener('click', ()=>{
+  cerrarPaneles();                 // se cierran al entrar; luego se pueden reabrir
   document.body.classList.add('kiosko');
   if(document.documentElement.requestFullscreen){
     document.documentElement.requestFullscreen().catch(()=>{});
