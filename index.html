@@ -106,6 +106,63 @@ body{
 }
 
 
+/* bienvenida (onboarding) */
+#bienv{
+  display:none;position:fixed;inset:0;z-index:60;
+  background:rgba(6,9,13,.82);backdrop-filter:blur(6px);
+  align-items:center;justify-content:center;padding:16px;
+}
+#bienv.on{display:flex}
+#bvCard{
+  width:min(460px,100%);max-height:88vh;overflow-y:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:22px 20px 18px;position:relative;
+}
+#bvCard h2{
+  font-family:'Archivo',sans-serif;font-size:19px;font-weight:800;
+  letter-spacing:.02em;margin-bottom:10px;text-transform:none;color:var(--text);
+}
+#bvCard h2 span{color:var(--accent)}
+#bvCard p{font-size:12px;line-height:1.7;color:var(--text);margin-bottom:10px}
+#bvCard .bvlist{margin:12px 0}
+#bvCard .bvlist div{font-size:11.5px;line-height:1.6;color:var(--text);margin-bottom:7px;padding-left:22px;position:relative}
+#bvCard .bvlist div b{color:var(--accent);position:absolute;left:0;font-size:13px}
+#bvCard .bvaviso{
+  background:#2a1c1e;border:1px solid #6b3a3f;border-radius:8px;
+  padding:9px 11px;margin:12px 0 4px;
+}
+#bvCard .bvaviso p{color:#f0c9cb;font-size:10.5px;line-height:1.6;margin:0}
+#bvCard .bvpasos{
+  background:#0d1218;border:1px solid var(--line);border-radius:9px;
+  padding:11px 13px;margin:10px 0;
+}
+#bvCard .bvpasos p{font-size:11.5px;margin:0;line-height:1.75}
+#bvNav{display:flex;gap:9px;align-items:center;margin-top:16px}
+#bvNav button{
+  flex:1;padding:11px;border-radius:9px;font-family:inherit;font-size:12.5px;
+  cursor:pointer;border:1px solid var(--line);background:#161d26;color:var(--text);
+}
+#bvNav button.pri{background:var(--accent);border-color:var(--accent);color:#0b0f14;font-weight:700}
+#bvNav button.pri:hover{filter:brightness(1.08)}
+#bvNav button.sec:hover{border-color:var(--accent)}
+#bvNav .bvsalta{flex:0 0 auto;background:none;border:none;color:var(--muted);font-size:11px;padding:11px 4px}
+#bvDots{display:flex;gap:6px;justify-content:center;margin-top:12px}
+#bvDots i{width:6px;height:6px;border-radius:50%;background:var(--line);display:block}
+#bvDots i.act{background:var(--accent)}
+#bvInstalar{
+  display:none;width:100%;margin:8px 0 2px;padding:12px;border-radius:9px;
+  background:#2aabee;color:#fff;border:none;font-family:inherit;font-size:12.5px;
+  font-weight:700;cursor:pointer;
+}
+#bvInstalar.on{display:block}
+#bvInstalar:hover{background:#1f95d4}
+#infoInstall{
+  display:block;width:100%;margin-top:10px;padding:9px;text-align:center;cursor:pointer;
+  background:#161d26;color:var(--text);border:1px solid var(--line);border-radius:8px;
+  font-family:inherit;font-size:11.5px;
+}
+#infoInstall:hover{border-color:var(--accent)}
+
 /* panel informativo */
 #info{
   display:none;position:fixed;z-index:27;
@@ -570,6 +627,37 @@ header .src a{color:var(--muted)}
   <div class="anota" id="anNota"></div>
 </div>
 
+<div id="bienv">
+  <div id="bvCard">
+    <!-- paso 1 -->
+    <div id="bvP1">
+      <h2 data-i18n="bvT1">Bienvenido a SISMO<span>·</span>MONITOR</h2>
+      <p data-i18n="bvIntro"></p>
+      <div class="bvlist">
+        <div><b>◉</b><span data-i18n="bvF1"></span></div>
+        <div><b>◉</b><span data-i18n="bvF2"></span></div>
+        <div><b>◉</b><span data-i18n="bvF3"></span></div>
+        <div><b>◉</b><span data-i18n="bvF4"></span></div>
+      </div>
+      <div class="bvaviso"><p data-i18n="bvAviso"></p></div>
+    </div>
+    <!-- paso 2 -->
+    <div id="bvP2" style="display:none">
+      <h2 data-i18n="bvT2">Tenlo siempre a mano</h2>
+      <p data-i18n="bvInstIntro"></p>
+      <button id="bvInstalar" data-i18n="bvInstalarBtn">Instalar aplicación</button>
+      <div class="bvpasos"><p id="bvPasos"></p></div>
+      <p style="font-size:10.5px;color:var(--muted)" data-i18n="bvCanalNota"></p>
+      <a id="bvCanal" href="#" target="_blank" rel="noopener" style="display:block;width:100%;margin-top:8px;padding:11px;text-align:center;background:#2aabee;color:#fff;border-radius:9px;font-weight:700;text-decoration:none;font-size:12.5px"><span data-i18n="infoCanalBtn">Unirme al canal</span> ↗</a>
+    </div>
+    <div id="bvNav">
+      <button class="bvsalta" id="bvSaltar" data-i18n="bvOmitir">Omitir</button>
+      <button class="pri" id="bvNext" data-i18n="bvSig">Siguiente</button>
+    </div>
+    <div id="bvDots"><i class="act"></i><i></i></div>
+  </div>
+</div>
+
 <div id="rpBar">
   <div class="rptop">
     <button id="rpPlay">⏸</button>
@@ -599,6 +687,8 @@ header .src a{color:var(--muted)}
 
   <h3 data-i18n="infoFuentesT">De dónde vienen los datos</h3>
   <p data-i18n="infoFuentes"></p>
+
+  <button id="infoInstall" data-i18n="bvVerInstruc">📲 Cómo instalar la app en tu teléfono</button>
 
   <p class="glink" style="margin-top:14px">
     <span data-i18n="infoAbierto">Proyecto de código abierto</span> ·
@@ -1776,6 +1866,85 @@ document.getElementById('rpProg').addEventListener('click', e=>{
 
 /* ================= reproducción animada (fin) ================= */
 
+/* ================= bienvenida (onboarding) ================= */
+let bvPaso = 1, bvPromptInstalar = null;
+
+/* Chrome guarda la posibilidad de instalar: la capturamos para ofrecerla */
+addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  bvPromptInstalar = e;
+  const b = document.getElementById('bvInstalar');
+  if(b) b.classList.add('on');
+});
+
+const esIOS = ()=>/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+const esAndroid = ()=>/Android/i.test(navigator.userAgent);
+const estaInstalada = ()=>matchMedia('(display-mode: standalone)').matches ||
+                          navigator.standalone===true;
+
+function bvTextoPasos(){
+  if(estaInstalada()) return t('bvYaInstalada');
+  if(esIOS())     return t('bvPasosIos');
+  if(esAndroid()) return t('bvPasosAndroid');
+  return t('bvPasosPC');
+}
+
+function bvMostrarPaso(n){
+  bvPaso = n;
+  document.getElementById('bvP1').style.display = n===1 ? 'block' : 'none';
+  document.getElementById('bvP2').style.display = n===2 ? 'block' : 'none';
+  document.getElementById('bvNext').textContent = n===1 ? t('bvSig') : t('bvEmpezar');
+  document.getElementById('bvSaltar').style.display = n===1 ? 'block' : 'none';
+  document.querySelectorAll('#bvDots i').forEach((d,i)=>d.classList.toggle('act', i===n-1));
+  if(n===2){
+    document.getElementById('bvPasos').innerHTML = bvTextoPasos();
+    const bi = document.getElementById('bvInstalar');
+    bi.classList.toggle('on', !!bvPromptInstalar && !estaInstalada());
+    const ca = document.getElementById('bvCanal');
+    if(CANAL_TELEGRAM){ ca.href = CANAL_TELEGRAM; ca.style.display='block'; }
+    else { ca.style.display='none'; }
+  }
+}
+
+function abrirBienvenida(paso){
+  cerrarPaneles();
+  document.getElementById('bienv').classList.add('on');
+  bvMostrarPaso(paso||1);
+}
+function cerrarBienvenida(){
+  document.getElementById('bienv').classList.remove('on');
+  try{ localStorage.setItem('sm_bienvenida','1'); }catch(e){}
+}
+
+document.getElementById('bvNext').addEventListener('click', ()=>{
+  if(bvPaso===1) bvMostrarPaso(2); else cerrarBienvenida();
+});
+document.getElementById('bvSaltar').addEventListener('click', cerrarBienvenida);
+document.getElementById('bienv').addEventListener('click', e=>{
+  if(e.target.id==='bienv') cerrarBienvenida();   // tocar fuera cierra
+});
+document.getElementById('bvInstalar').addEventListener('click', async ()=>{
+  if(!bvPromptInstalar) return;
+  bvPromptInstalar.prompt();
+  try{ await bvPromptInstalar.userChoice; }catch(e){}
+  bvPromptInstalar = null;
+  document.getElementById('bvInstalar').classList.remove('on');
+  document.getElementById('bvPasos').innerHTML = bvTextoPasos();
+});
+document.getElementById('infoInstall').addEventListener('click', ()=>abrirBienvenida(2));
+
+/* primera visita: mostrarla automáticamente */
+(function bienvenidaInicial(){
+  let vista = null;
+  try{ vista = localStorage.getItem('sm_bienvenida'); }catch(e){}
+  // si llega por un enlace directo a un sismo, no interrumpir
+  const enlaceDirecto = location.hash.includes('evento=');
+  if(!vista && !enlaceDirecto){
+    setTimeout(()=>abrirBienvenida(1), 900);   // tras la carga del globo
+  }
+})();
+
 /* ================= panel informativo ================= */
 function abrirInfo(){
   cerrarPaneles('info');
@@ -1838,6 +2007,23 @@ const I18N = {
     archNota:' Incluye {n} sismos menores detectados por la red local.',
     buscandoArch:'Buscando el sismo…',
     listaPeriodo:'Eventos del período', mostrarMas:'Mostrar más',
+    bvT1:'Bienvenido a SISMO<span>·</span>MONITOR',
+    bvIntro:'Un panel gratuito para ver los sismos que ocurren en el mundo, minuto a minuto, con especial atención a Venezuela y el Caribe.',
+    bvF1:'Toca cualquier punto del globo o de la lista para ver magnitud, ubicación, hora y profundidad.',
+    bvF2:'Arrastra para girar el globo y usa dos dedos para acercar o alejar.',
+    bvF3:'Activa las alertas para que suene un aviso cuando ocurra un sismo cerca de ti.',
+    bvF4:'Datos oficiales de FUNVISIS, USGS y EMSC, actualizados cada minuto.',
+    bvAviso:'⚠ Los sismos <b>no se pueden predecir</b>. Aquí se informa de eventos que <b>ya ocurrieron</b>, con algunos minutos de retraso. No sustituye a Protección Civil.',
+    bvT2:'Tenlo siempre a mano',
+    bvInstIntro:'Puedes instalarlo como aplicación en tu teléfono: abre más rápido, ocupa toda la pantalla y no necesitas buscar el enlace.',
+    bvInstalarBtn:'📲 Instalar aplicación',
+    bvPasosAndroid:'1. Toca el menú <b>⋮</b> de tu navegador.<br>2. Elige <b>«Instalar aplicación»</b> o <b>«Agregar a pantalla de inicio»</b>.<br>3. Confirma. El icono quedará junto a tus otras apps.',
+    bvPasosIos:'1. Abre esta página en <b>Safari</b> (no funciona desde otros navegadores).<br>2. Toca el botón <b>Compartir</b> ⬆️ de la barra inferior.<br>3. Elige <b>«Añadir a pantalla de inicio»</b> y confirma.',
+    bvPasosPC:'En Chrome o Edge, pulsa el icono de <b>instalar</b> ⊕ que aparece en la barra de direcciones. También puedes guardar esta página en favoritos.',
+    bvYaInstalada:'✓ Ya lo estás usando como aplicación instalada.',
+    bvCanalNota:'¿Prefieres recibir los avisos sin abrir nada? Suscríbete al canal de Telegram:',
+    bvOmitir:'Omitir', bvSig:'Siguiente →', bvEmpezar:'Empezar',
+    bvVerInstruc:'📲 Cómo instalar la app en tu teléfono',
     reproducir:'▶ Reproducir en el globo',
     rpEventos:'{n} de {tot} sismos', rpVacio:'No hay datos para reproducir en este rango.',
     infoT:'Qué es SISMO·MONITOR',
@@ -1899,6 +2085,23 @@ const I18N = {
     archNota:' Includes {n} smaller earthquakes detected by the local network.',
     buscandoArch:'Looking for the earthquake…',
     listaPeriodo:'Events in this period', mostrarMas:'Show more',
+    bvT1:'Welcome to SISMO<span>·</span>MONITOR',
+    bvIntro:'A free dashboard to see earthquakes happening worldwide, minute by minute, with special attention to Venezuela and the Caribbean.',
+    bvF1:'Tap any point on the globe or in the list to see magnitude, location, time and depth.',
+    bvF2:'Drag to rotate the globe and pinch with two fingers to zoom.',
+    bvF3:'Turn on alerts to get a sound and notification when an earthquake happens near you.',
+    bvF4:'Official data from FUNVISIS, USGS and EMSC, refreshed every minute.',
+    bvAviso:'⚠ Earthquakes <b>cannot be predicted</b>. This reports events that have <b>already happened</b>, with a few minutes of delay. It does not replace civil-protection agencies.',
+    bvT2:'Keep it close at hand',
+    bvInstIntro:'You can install it as an app on your phone: it opens faster, runs full screen and you won\'t need to look for the link.',
+    bvInstalarBtn:'📲 Install app',
+    bvPasosAndroid:'1. Tap your browser\'s <b>⋮</b> menu.<br>2. Choose <b>“Install app”</b> or <b>“Add to Home screen”</b>.<br>3. Confirm. The icon will sit with your other apps.',
+    bvPasosIos:'1. Open this page in <b>Safari</b> (it won\'t work from other browsers).<br>2. Tap the <b>Share</b> button ⬆️ in the bottom bar.<br>3. Choose <b>“Add to Home Screen”</b> and confirm.',
+    bvPasosPC:'In Chrome or Edge, click the <b>install</b> icon ⊕ in the address bar. You can also bookmark this page.',
+    bvYaInstalada:'✓ You are already using it as an installed app.',
+    bvCanalNota:'Prefer alerts without opening anything? Subscribe to the Telegram channel:',
+    bvOmitir:'Skip', bvSig:'Next →', bvEmpezar:'Start',
+    bvVerInstruc:'📲 How to install the app on your phone',
     reproducir:'▶ Play on the globe',
     rpEventos:'{n} of {tot} earthquakes', rpVacio:'No data to play in this range.',
     infoT:'What is SISMO·MONITOR',
@@ -1939,6 +2142,7 @@ document.getElementById('langBtn').addEventListener('click', ()=>{
   LANG = LANG==='es' ? 'en' : 'es';
   try{ localStorage.setItem('sm_lang', LANG); }catch(e){}
   aplicarIdioma();
+  if(document.getElementById('bienv').classList.contains('on')) bvMostrarPaso(bvPaso);
   if(quakes.length){ renderList(); renderStats(); renderTimeline(); }
 });
 aplicarIdioma();
