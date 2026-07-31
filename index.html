@@ -248,6 +248,7 @@ header h1{
 }
 header h1 span{color:var(--accent)}
 header .src{margin-left:auto;color:var(--muted);font-size:11px;text-align:right;pointer-events:auto}
+header .src .srcline,header .src .updline{display:block}
 header .src a{color:var(--muted)}
 #updated{color:var(--text)}
 
@@ -362,12 +363,19 @@ header .src a{color:var(--muted)}
 /* ---------- móvil ---------- */
 #mobilenav{display:none}
 @media (max-width:820px){
-  header{padding:10px 12px;gap:10px}
-  header h1{font-size:14px}
-  header .src{font-size:9px;line-height:1.5}
+  header{padding:8px 10px;gap:8px;flex-wrap:wrap;align-items:center}
+  header h1{font-size:13px;letter-spacing:.1em;flex:none}
+  /* los botones caben siempre: se compactan y, si hiciera falta, saltan de línea */
+  header .hctrl{margin-left:auto;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  header .hctrl button{padding:5px 8px;font-size:11px;min-width:32px;line-height:1.1}
+  /* la atribución de fuentes vive en el panel ℹ; aquí solo la hora de actualización */
+  header .src{order:3;width:100%;margin-left:0;text-align:left;font-size:9px;line-height:1.4}
+  header .src .srcline{display:none}
   header .src a{pointer-events:none;text-decoration:none}
   #hint{display:none}
-  #status{top:60px;max-width:92vw;font-size:10px}
+  #status{top:76px;max-width:92vw;font-size:10px}
+  #eyeFloat{top:auto;bottom:64px;right:10px}
+  #kioskExit{top:auto;bottom:64px;right:54px}
 
   /* los tres paneles se vuelven hojas deslizables desde abajo */
   #left,#right,#timeline{
@@ -429,8 +437,8 @@ header .src a{color:var(--muted)}
     <button id="kioskBtn" title="Modo pantalla completa">⛶</button>
   </div>
   <div class="src">
-    <span data-i18n="fuentes">Fuentes:</span> <a href="https://earthquake.usgs.gov" target="_blank">USGS</a> · <a href="http://www.funvisis.gob.ve" target="_blank">FUNVISIS</a> · <a href="https://www.seismicportal.eu" target="_blank">EMSC</a><br>
-    <span data-i18n="actualizacion">Última actualización:</span> <span id="updated">—</span>
+    <span class="srcline"><span data-i18n="fuentes">Fuentes:</span> <a href="https://earthquake.usgs.gov" target="_blank">USGS</a> · <a href="http://www.funvisis.gob.ve" target="_blank">FUNVISIS</a> · <a href="https://www.seismicportal.eu" target="_blank">EMSC</a></span>
+    <span class="updline"><span data-i18n="actualizacion">Última actualización:</span> <span id="updated">—</span></span>
   </div>
 </header>
 <button id="kioskExit" title="Salir de pantalla completa">✕</button>
