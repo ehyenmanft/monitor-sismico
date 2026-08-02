@@ -2,7 +2,7 @@
  * ============================================================
  *  ARCHIVO SÍSMICO + ALERTAS TELEGRAM — Google Apps Script
  * ============================================================
- *  Vigila cada 5 minutos las fuentes (FUNVISIS + USGS), guarda
+ *  Vigila cada 5 minutos las fuentes (FUNVISIS + USGS + EMSC), guarda
  *  todo evento nuevo en una hoja de cálculo (tu catálogo histórico
  *  propio) y PUBLICA EN UN CANAL DE TELEGRAM cada sismo relevante,
  *  con vista satelital del epicentro, pin de mapa interactivo,
@@ -31,6 +31,8 @@
  *  7. Ejecuta ▶ probarCanal        → debe publicarse un sismo de prueba
  *  8. Ejecuta ▶ instalarTrigger    → activa la vigilancia cada 5 min
  *  9. Comparte t.me/tucanal para que la gente se suscriba
+ * 10. (Recomendado) Para recibir avisos si algo se rompe, pon tu chat
+ *     personal en TELEGRAM_CHAT_ID y ejecuta ▶ probarSalud
  *
  *  Para detener la vigilancia: ejecuta desinstalarTrigger.
  * ============================================================
@@ -67,7 +69,17 @@ var CONFIG = {
   WEB_URL: 'https://ehyenmanft.github.io/monitor-sismico/',
 
   // --- Archivo ---
-  ARCHIVAR_TODO: true      // true: guarda TODOS los eventos en la hoja
+  ARCHIVAR_TODO: true,     // true: guarda TODOS los eventos en la hoja
+
+  // --- Vigilancia de salud del sistema ---
+  // Los avisos de salud van SIEMPRE a tu chat privado, nunca al canal.
+  // Necesita TELEGRAM_CHAT_ID; si está vacío, solo quedan en el registro.
+  SALUD_ACTIVA: true,
+  SALUD_HORAS_FUNVISIS: 12,   // sin ningún evento venezolano en N horas → aviso
+  SALUD_HORAS_USGS: 3,        // USGS publica constantemente: 3 h de silencio ya es raro
+  SALUD_FALLOS_SEGUIDOS: 3,   // N ciclos seguidos sin poder leer una fuente → aviso
+  SALUD_REPETIR_HORAS: 12,    // no repetir el mismo aviso antes de N horas
+  RESUMEN_SEMANAL: true       // informe de estado los lunes por la mañana
 };
 
 // Zona de cobertura del canal: Venezuela, su mar Caribe y las Antillas cercanas
@@ -82,6 +94,7 @@ var EXCLUIR_NIDO = {minlat: 6.0, maxlat: 7.6, minlon: -74.2, maxlon: -72.4};
 var EXCLUIR_NIDO_BAJO = 4.5;
 
 var URL_USGS = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+var URL_EMSC = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=800&starttime=';
 
 /* ================= función principal (la del trigger) ================= */
 
@@ -106,8 +119,10 @@ function vigilarSismos() {
         lugar: (p.addressFormatted || '—') + ', Venezuela'
       });
     });
+    saludRegistrar_('funvisis', true);
   } catch (err) {
     Logger.log('FUNVISIS falló: ' + err);
+    saludRegistrar_('funvisis', false, String(err));
   }
 
   // USGS
@@ -131,9 +146,44 @@ function vigilarSismos() {
           felt: f.properties.felt || null        // reportes de personas que lo sintieron
         });
       });
+      saludRegistrar_('usgs', true);
+    } else {
+      saludRegistrar_('usgs', false, 'HTTP ' + resp.getResponseCode());
     }
   } catch (err) {
     Logger.log('USGS falló: ' + err);
+    saludRegistrar_('usgs', false, String(err));
+  }
+
+  // EMSC — tercera red: cubre el Caribe y a menudo detecta eventos costa afuera
+  // que USGS no cataloga. Su ausencia aquí fue la causa de alertas perdidas.
+  try {
+    var desdeIso = Utilities.formatDate(new Date(Date.now() - 86400000),
+                                        'UTC', "yyyy-MM-dd'T'HH:mm:ss");
+    var re = UrlFetchApp.fetch(URL_EMSC + desdeIso, { muteHttpExceptions: true });
+    if (re.getResponseCode() === 200) {
+      var ej = JSON.parse(re.getContentText());
+      (ej.features || []).forEach(function (f) {
+        var p = f.properties || {};
+        if (p.mag == null) return;
+        eventos.push({
+          id: 'em-' + (p.unid || p.source_id),
+          fuente: 'EMSC',
+          t: new Date(p.time),
+          mag: p.mag,
+          lat: p.lat,
+          lon: p.lon,
+          prof: p.depth || 0,
+          lugar: p.flynn_region || '—'
+        });
+      });
+      saludRegistrar_('emsc', true);
+    } else if (re.getResponseCode() !== 204) {   // 204 = sin eventos, no es fallo
+      saludRegistrar_('emsc', false, 'HTTP ' + re.getResponseCode());
+    }
+  } catch (err) {
+    Logger.log('EMSC falló: ' + err);
+    saludRegistrar_('emsc', false, String(err));
   }
 
   if (!eventos.length) { Logger.log('Sin datos de ninguna fuente.'); return; }
@@ -158,8 +208,19 @@ function vigilarSismos() {
     // publicar y alertar (nunca en la primera ejecución)
     if (!primeraVez) {
       // 1) CANAL público: sismos relevantes, con validación cruzada entre fuentes
+      var yaPublicados = [];
       nuevos.filter(esParaCanal_)
             .sort(function (a, b) { return b.mag - a.mag; })
+            .filter(function (e) {
+              // el mismo sismo puede llegar por dos o tres redes: publicar una vez
+              for (var i = 0; i < yaPublicados.length; i++) {
+                var o = yaPublicados[i];
+                if (Math.abs(o.t.getTime() - e.t.getTime()) < 10 * 60 * 1000 &&
+                    Math.abs(o.lat - e.lat) < 0.5 && Math.abs(o.lon - e.lon) < 0.5) return false;
+              }
+              yaPublicados.push(e);
+              return true;
+            })
             .slice(0, 4)
             .forEach(function (e) {
               publicarEnCanal_(e, cruzarFuentes_(e, eventos));
@@ -181,8 +242,14 @@ function vigilarSismos() {
   props.setProperty('ids_vistos', JSON.stringify(vistos));
   props.setProperty('inicializado', '1');
 
+  // registrar el evento más reciente de cada red (para detectar silencios)
+  saludUltimoEvento_(eventos);
+
   Logger.log('Eventos: ' + eventos.length + ' · nuevos: ' + nuevos.length +
              (primeraVez ? ' (primera ejecución: sin alertas)' : ''));
+
+  if (CONFIG.SALUD_ACTIVA && !primeraVez) revisarSalud_();
+  if (CONFIG.RESUMEN_SEMANAL) resumenSemanal_();
 }
 
 /* ================= criterios y utilidades ================= */
@@ -521,6 +588,188 @@ function probarArchivo() {
   });
   Logger.log(trg.length ? '✓ Activador instalado (vigilancia activa)'
                         : '❌ SIN ACTIVADOR: ejecuta instalarTrigger');
+}
+
+
+/* ================= vigilancia de salud del sistema =================
+ *  Detecta fallos silenciosos: una fuente que deja de responder, o que
+ *  responde pero no publica eventos nuevos (formato cambiado, servicio
+ *  degradado). Sin esto, un fallo se descubre por casualidad — y con
+ *  suscriptores en el canal, el silencio se confunde con "no hay sismos".
+ * ================================================================= */
+
+function saludProps_() { return PropertiesService.getScriptProperties(); }
+
+function saludLeer_() {
+  try { return JSON.parse(saludProps_().getProperty('salud') || '{}'); }
+  catch (e) { return {}; }
+}
+function saludGuardar_(o) {
+  try { saludProps_().setProperty('salud', JSON.stringify(o)); } catch (e) {}
+}
+
+/** Anota si una fuente respondió bien o falló en este ciclo. */
+function saludRegistrar_(fuente, ok, detalle) {
+  var h = saludLeer_();
+  h[fuente] = h[fuente] || {};
+  if (ok) {
+    h[fuente].fallos = 0;
+    h[fuente].okEn = Date.now();
+  } else {
+    h[fuente].fallos = (h[fuente].fallos || 0) + 1;
+    h[fuente].error = detalle || '';
+  }
+  saludGuardar_(h);
+}
+
+/** Guarda la hora del evento más reciente visto por cada red. */
+function saludUltimoEvento_(eventos) {
+  var h = saludLeer_();
+  ['FUNVISIS', 'USGS', 'EMSC'].forEach(function (f) {
+    var t = 0;
+    eventos.forEach(function (e) {
+      if (e.fuente === f && e.t.getTime() > t) t = e.t.getTime();
+    });
+    if (t) {
+      var k = f.toLowerCase();
+      h[k] = h[k] || {};
+      h[k].ultimoEvento = t;
+    }
+  });
+  saludGuardar_(h);
+}
+
+/** ¿Ya avisamos de esto hace poco? Evita repetir el mismo aviso cada 5 minutos. */
+function saludYaAvisado_(clave) {
+  var h = saludLeer_();
+  var ult = (h.avisos || {})[clave] || 0;
+  if (Date.now() - ult < CONFIG.SALUD_REPETIR_HORAS * 3600000) return true;
+  h.avisos = h.avisos || {};
+  h.avisos[clave] = Date.now();
+  saludGuardar_(h);
+  return false;
+}
+
+function revisarSalud_() {
+  var h = saludLeer_();
+  var problemas = [];
+  var ahora = Date.now();
+
+  [['funvisis', 'FUNVISIS', CONFIG.SALUD_HORAS_FUNVISIS],
+   ['usgs', 'USGS', CONFIG.SALUD_HORAS_USGS],
+   ['emsc', 'EMSC', CONFIG.SALUD_HORAS_USGS]].forEach(function (par) {
+    var k = par[0], nombre = par[1], horas = par[2];
+    var d = h[k] || {};
+
+    // 1) la fuente no responde
+    if ((d.fallos || 0) >= CONFIG.SALUD_FALLOS_SEGUIDOS &&
+        !saludYaAvisado_('conexion_' + k)) {
+      problemas.push('🔌 *' + nombre + ' no responde*\n' +
+        d.fallos + ' intentos fallidos seguidos.\n' +
+        (d.error ? '`' + String(d.error).substring(0, 120) + '`' : ''));
+    }
+
+    // 2) responde pero lleva demasiado tiempo sin publicar nada nuevo
+    //    (síntoma típico de un cambio de formato que rompe el parseo)
+    if (d.ultimoEvento && (d.fallos || 0) === 0) {
+      var horasSin = (ahora - d.ultimoEvento) / 3600000;
+      if (horasSin >= horas && !saludYaAvisado_('silencio_' + k)) {
+        problemas.push('🔇 *' + nombre + ' lleva ' + Math.round(horasSin) + ' h sin eventos nuevos*\n' +
+          'La fuente responde, pero no llegan datos. Puede ser calma real o un cambio de formato.\n' +
+          'Comprueba: ' + (k === 'funvisis'
+            ? 'http://www.funvisis.gob.ve'
+            : 'https://earthquake.usgs.gov'));
+      }
+    }
+  });
+
+  // 3) el archivo dejó de crecer
+  try {
+    var hoja = obtenerHoja_();
+    var filas = hoja.getLastRow() - 1;
+    if (h.filasPrev && filas === h.filasPrev.n &&
+        ahora - h.filasPrev.t > 6 * 3600000 &&
+        !saludYaAvisado_('archivo')) {
+      problemas.push('🗄 *El archivo no crece*\n' +
+        'Sigue en ' + filas + ' filas desde hace más de 6 horas.');
+    }
+    if (!h.filasPrev || filas !== h.filasPrev.n) {
+      h.filasPrev = { n: filas, t: ahora };
+      saludGuardar_(h);
+    }
+  } catch (e) {
+    Logger.log('Salud: no se pudo leer la hoja: ' + e);
+  }
+
+  if (problemas.length) avisarSalud_('⚠️ *SISMO·MONITOR — aviso del sistema*\n\n' + problemas.join('\n\n'));
+}
+
+/** Los avisos técnicos van a tu chat privado, nunca al canal público. */
+function avisarSalud_(texto) {
+  Logger.log(texto.replace(/\*/g, ''));
+  if (!CONFIG.TELEGRAM_CHAT_ID) return;   // sin chat privado, solo queda en el registro
+  apiTelegram_('sendMessage', {
+    chat_id: CONFIG.TELEGRAM_CHAT_ID,
+    text: texto, parse_mode: 'Markdown', disable_web_page_preview: true
+  });
+}
+
+/** Informe de estado los lunes por la mañana (hora de Venezuela). */
+function resumenSemanal_() {
+  var ahora = new Date();
+  var loc = Utilities.formatDate(ahora, 'America/Caracas', 'u/HH');  // díaSemana/hora
+  if (loc.indexOf('1/08') !== 0) return;                            // lunes, 8 a 9 h
+  if (saludYaAvisado_('resumen')) return;
+
+  var h = saludLeer_();
+  var lineas = ['📊 *SISMO·MONITOR — estado semanal*', ''];
+
+  try {
+    var hoja = obtenerHoja_();
+    lineas.push('🗄 Archivo: *' + (hoja.getLastRow() - 1) + '* eventos guardados');
+    var r = JSON.parse(servirArchivo({ dias: '7' }).getContent());
+    var fv = JSON.parse(servirArchivo({ dias: '7', fuente: 'FUNVISIS' }).getContent());
+    lineas.push('📅 Últimos 7 días: *' + r.count + '* eventos (' + fv.count + ' de FUNVISIS)');
+  } catch (e) {
+    lineas.push('🗄 No se pudo leer el archivo: ' + e);
+  }
+
+  ['funvisis', 'usgs', 'emsc'].forEach(function (k) {
+    var d = h[k] || {};
+    var estado = (d.fallos || 0) > 0 ? '❌ con fallos'
+               : d.ultimoEvento ? '✅ activa' : '⚠️ sin datos';
+    var desde = d.ultimoEvento
+      ? ' · último evento hace ' + Math.round((Date.now() - d.ultimoEvento) / 3600000) + ' h'
+      : '';
+    lineas.push('📡 ' + k.toUpperCase() + ': ' + estado + desde);
+  });
+
+  var trg = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === 'vigilarSismos';
+  });
+  lineas.push('⏱ Vigilancia: ' + (trg.length ? '✅ activa cada 5 min' : '❌ SIN ACTIVADOR'));
+
+  avisarSalud_(lineas.join('\n'));
+}
+
+/** Comprobación manual del estado (ejecutar desde el editor). */
+function probarSalud_() { probarSalud(); }
+function probarSalud() {
+  var h = saludLeer_();
+  Logger.log('Estado guardado: ' + JSON.stringify(h, null, 2));
+  ['funvisis', 'usgs', 'emsc'].forEach(function (k) {
+    var d = h[k] || {};
+    Logger.log(k.toUpperCase() + ' → fallos seguidos: ' + (d.fallos || 0) +
+      ' · último evento: ' + (d.ultimoEvento
+        ? Math.round((Date.now() - d.ultimoEvento) / 3600000) + ' h atrás'
+        : 'nunca'));
+  });
+  if (!CONFIG.TELEGRAM_CHAT_ID) {
+    Logger.log('⚠️ TELEGRAM_CHAT_ID vacío: los avisos de salud solo se escriben aquí, no llegan a Telegram.');
+  } else {
+    avisarSalud_('🔧 *Prueba del vigilante de salud*\nSi lees esto, los avisos técnicos funcionan.');
+    Logger.log('Aviso de prueba enviado a tu chat privado.');
+  }
 }
 
 /* ================= configuración y pruebas ================= */
