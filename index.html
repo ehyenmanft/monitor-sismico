@@ -148,6 +148,11 @@ body.trazo .quake.tzsel{border-color:#6ad8c0;background:#16262a}
 @media (min-width:821px){
   .panel h2, #timeline h2{cursor:move;user-select:none}
   .panel.movido, #timeline.movido{transition:none}
+  /* al mover un panel se libera su anclaje inferior: hay que devolverle
+     un tope de altura para que la lista siga desplazándose por dentro */
+  .panel.movido{max-height:calc(100vh - 24px);display:flex;flex-direction:column}
+  #right.movido{height:auto}
+  #left.movido{overflow-y:auto}
   .panel.arrastrando, #timeline.arrastrando{opacity:.92;box-shadow:0 8px 32px rgba(0,0,0,.55)}
   #resetPos{
     position:fixed;left:16px;bottom:14px;z-index:16;display:none;
@@ -996,7 +1001,7 @@ canvas.addEventListener('pointermove', e=>{
   px=e.clientX; py=e.clientY;
 });
 canvas.addEventListener('wheel', e=>{
-  e.preventDefault();
+  e.preventDefault();   // solo sobre el globo: las listas conservan su desplazamiento
   targetDist = Math.max(140, Math.min(650, targetDist + e.deltaY*0.4));
 },{passive:false});
 
@@ -2280,6 +2285,7 @@ function aplicarPos(id){
   el.style.right = 'auto';
   el.style.bottom = 'auto';
   el.style.transform = 'none';
+  el.style.maxHeight = Math.max(160, innerHeight - p.y - 16) + 'px';
   document.getElementById('resetPos').classList.add('on');
 }
 
@@ -2298,6 +2304,7 @@ function hacerArrastrable(id, asa){
     el.style.left = r.left+'px';
     el.style.top  = r.top+'px';
     el.style.right='auto'; el.style.bottom='auto'; el.style.transform='none';
+    el.style.maxHeight = Math.max(160, innerHeight - r.top - 16) + 'px';
     ox = e.clientX - r.left;
     oy = e.clientY - r.top;
     activo = true;
@@ -2313,6 +2320,7 @@ function hacerArrastrable(id, asa){
     const y = Math.max(0,            Math.min(innerHeight-44, e.clientY-oy));
     el.style.left = x+'px';
     el.style.top  = y+'px';
+    el.style.maxHeight = Math.max(160, innerHeight - y - 16) + 'px';
   });
 
   const soltar = ()=>{
@@ -2339,7 +2347,7 @@ document.getElementById('resetPos').addEventListener('click', ()=>{
   ['left','right','timeline','analisis','info'].forEach(id=>{
     const el = document.getElementById(id);
     el.classList.remove('movido');
-    el.style.left=el.style.top=el.style.right=el.style.bottom=el.style.transform='';
+    el.style.left=el.style.top=el.style.right=el.style.bottom=el.style.transform=el.style.maxHeight='';
   });
   document.getElementById('resetPos').classList.remove('on');
   renderTimeline();
@@ -3051,6 +3059,15 @@ function resize(){
   camera.updateProjectionMatrix();
   renderTimeline();
 }
+addEventListener('resize', ()=>{
+  ['left','right','timeline','analisis','info'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && el.classList.contains('movido')){
+      const y = parseInt(el.style.top) || 0;
+      el.style.maxHeight = Math.max(160, innerHeight - y - 16) + 'px';
+    }
+  });
+});
 addEventListener('resize', resize);
 resize();
 
