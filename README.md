@@ -23,6 +23,7 @@
 - **Vista satelital** con seguimiento GPS en tiempo real y capa diaria de la NASA, sin claves de API.
 - **Análisis histórico** con gráficas de magnitud y frecuencia hasta 60 días o desde una fecha fija, filtrable por región.
 - **Replay animado**: reproduce la secuencia de sismos sobre el globo, con control de velocidad y búsqueda.
+- **Modo trazo**: conecta sismos manualmente para medir alineaciones, con guardado y enlaces compartibles.
 - **Canal de Telegram** con validación cruzada entre redes, imagen del epicentro y pin de mapa.
 - **Responsive**: interfaz de hojas deslizables y navegación inferior en móvil.
 

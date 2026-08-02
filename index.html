@@ -734,6 +734,9 @@ body.ocultarT #timeline{display:none}
     <button id="tzClear" data-i18n="tzLimpiar">Limpiar</button>
     <button id="tzToggleList" data-i18n="tzVerLista">Ver lista</button>
     <button id="tzShare" data-i18n="tzCopiar">📋 Copiar</button>
+    <button id="tzLink" data-i18n="tzEnlace">🔗 Enlace</button>
+    <button id="tzGuardar" data-i18n="tzGuardar">💾 Guardar</button>
+    <select id="tzGuardados" style="background:#161d26;color:var(--text);border:1px solid var(--line);border-radius:6px;font-family:inherit;font-size:11px;padding:4px 6px"></select>
     <button id="tzClose" title="Salir">✕</button>
     <span id="tzInfo"></span>
   </div>
@@ -1996,7 +1999,7 @@ document.getElementById('rpProg').addEventListener('click', e=>{
 /* ================= reproducción animada (fin) ================= */
 
 /* ================= modo trazo manual ================= */
-let tzActivo=false, tzSel=[], tzRotGuardada=null;
+let tzActivo=false, tzSel=[], tzRotGuardada=null, tzUrlHecho=false;
 const tzGrupo = new THREE.Group();
 globe.add(tzGrupo);
 const tzMatLinea = new THREE.LineBasicMaterial({color:0x6ad8c0, transparent:true, opacity:.85});
@@ -2011,10 +2014,14 @@ function abrirTrazo(){
   document.getElementById('mnGlobo').classList.remove('act');
   tzRotGuardada = VEL_ROTACION_ACTUAL;
   VEL_ROTACION_ACTUAL = 0;              // el globo se detiene; se gira arrastrando
+  tzListaGuardados();
   tzActualizar();
 }
 function cerrarTrazo(){
   tzActivo = false;
+  if(location.hash.includes('trazo=')){
+    try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+  }
   document.body.classList.remove('trazo');
   document.getElementById('tzBar').classList.remove('on');
   document.getElementById('mnTz').classList.remove('act');
@@ -2117,6 +2124,145 @@ document.getElementById('tzShare').addEventListener('click', async e=>{
   try{ await navigator.clipboard.writeText(txt); e.target.textContent = t('tzCopiado');
        setTimeout(()=>{ e.target.textContent = t('tzCopiar'); }, 2200); }catch(err){}
 });
+
+/* ---------- guardar, cargar y compartir trazos ---------- */
+const TZ_KEY = 'sm_trazos';
+
+function tzLeerGuardados(){
+  try{ return JSON.parse(localStorage.getItem(TZ_KEY)) || {}; }catch(e){ return {}; }
+}
+function tzEscribirGuardados(o){
+  try{ localStorage.setItem(TZ_KEY, JSON.stringify(o)); }catch(e){}
+}
+
+/* Codificación compacta: lat,lon,magnitud y hora en minutos desde 2026.
+   Va en la URL, así que no depende de que el evento siga en ninguna fuente. */
+const TZ_EPOCA = Date.parse('2026-01-01T00:00:00Z');
+function tzCodificar(lista){
+  return lista.map(q =>
+    q.lat.toFixed(2)+','+q.lon.toFixed(2)+','+q.mag.toFixed(1)+','+
+    Math.round((q.time-TZ_EPOCA)/60000)
+  ).join(';');
+}
+function tzDecodificar(txt){
+  return txt.split(';').map(p=>{
+    const [lat,lon,mag,min] = p.split(',');
+    return {
+      id:'tz-'+lat+'-'+lon+'-'+min,
+      src:'', place:'',
+      lat:parseFloat(lat), lon:parseFloat(lon),
+      mag:parseFloat(mag), depth:0,
+      time:TZ_EPOCA + parseInt(min)*60000
+    };
+  }).filter(q=>isFinite(q.lat)&&isFinite(q.lon)&&isFinite(q.mag)&&isFinite(q.time));
+}
+
+/* Al cargar un trazo compartido, intenta recuperar el nombre del lugar
+   buscando el sismo real entre los datos disponibles. */
+function tzEnriquecer(lista){
+  let hallados = 0;
+  const fuentes = allQuakes.concat(anUltimos||[]);
+  lista.forEach(q=>{
+    const real = fuentes.find(r =>
+      Math.abs(r.time-q.time) < 5*60*1000 &&
+      Math.abs(r.lat-q.lat) < 0.2 && Math.abs(r.lon-q.lon) < 0.2);
+    if(real){ q.place = real.place; q.src = real.src; q.depth = real.depth;
+              q.id = real.id; q.url = real.url; hallados++; }
+    else if(!q.place){ q.place = q.lat.toFixed(2)+'°, '+q.lon.toFixed(2)+'°'; }
+  });
+  return hallados;
+}
+
+function tzListaGuardados(){
+  const sel = document.getElementById('tzGuardados');
+  const g = tzLeerGuardados();
+  const nombres = Object.keys(g);
+  sel.innerHTML = '';
+  const o0 = document.createElement('option');
+  o0.value = ''; o0.textContent = t('tzMisTrazos');
+  sel.appendChild(o0);
+  nombres.forEach(n=>{
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n+' ('+g[n].split(';').length+')';
+    sel.appendChild(o);
+  });
+  if(nombres.length){
+    const ob = document.createElement('option');
+    ob.value = '__borrar__'; ob.textContent = t('tzBorrarTrazo');
+    sel.appendChild(ob);
+  }
+  sel.style.display = nombres.length ? '' : 'none';
+}
+
+function tzCargarLista(lista, nombre){
+  if(!lista.length) return;
+  const hallados = tzEnriquecer(lista);
+  tzSel = lista;
+  if(!tzActivo) abrirTrazo();
+  tzRedibujar(); tzActualizar();
+  const st = document.getElementById('status');
+  if(hallados < lista.length){
+    st.textContent = t('tzNoEncontrado').replace('{n}', hallados).replace('{tot}', lista.length);
+  } else if(nombre){
+    st.textContent = t('tzCargado').replace('{n}', nombre);
+  } else return;
+  st.classList.add('on');
+  setTimeout(()=>st.classList.remove('on'), 6000);
+}
+
+/* botón: enlace compartible */
+document.getElementById('tzLink').addEventListener('click', async e=>{
+  if(!tzSel.length) return;
+  const url = location.origin + location.pathname + '#trazo=' + encodeURIComponent(tzCodificar(tzSel));
+  try{
+    if(navigator.share && esMovilTactil()){
+      await navigator.share({title:'SISMO·MONITOR', text:t('navTrazo'), url});
+    } else {
+      await navigator.clipboard.writeText(url);
+      e.target.textContent = t('tzEnlaceListo');
+      setTimeout(()=>{ e.target.textContent = t('tzEnlace'); }, 2400);
+    }
+  }catch(err){}
+});
+
+/* botón: guardar en este navegador */
+document.getElementById('tzGuardar').addEventListener('click', e=>{
+  if(!tzSel.length) return;
+  const nombre = (prompt(t('tzNombre'), '') || '').trim().slice(0,40);
+  if(!nombre) return;
+  const g = tzLeerGuardados();
+  g[nombre] = tzCodificar(tzSel);
+  tzEscribirGuardados(g);
+  tzListaGuardados();
+  e.target.textContent = t('tzGuardado');
+  setTimeout(()=>{ e.target.textContent = t('tzGuardar'); }, 2200);
+});
+
+/* selector: cargar o borrar un trazo guardado */
+document.getElementById('tzGuardados').addEventListener('change', e=>{
+  const v = e.target.value;
+  const g = tzLeerGuardados();
+  if(v === '__borrar__'){
+    const nombres = Object.keys(g);
+    if(nombres.length){
+      const n = prompt(t('tzBorrarTrazo')+'\n\n'+nombres.join('\n'), nombres[0]);
+      if(n && g[n]){ delete g[n]; tzEscribirGuardados(g); tzListaGuardados(); }
+    }
+    e.target.value = '';
+    return;
+  }
+  if(v && g[v]) tzCargarLista(tzDecodificar(g[v]), v);
+  e.target.value = '';
+});
+
+/* enlace entrante con un trazo */
+function tzDesdeUrl(){
+  try{
+    const p = new URLSearchParams(location.hash.slice(1)).get('trazo');
+    if(p) tzCargarLista(tzDecodificar(decodeURIComponent(p)));
+  }catch(e){}
+}
+addEventListener('hashchange', ()=>{ if(location.hash.includes('trazo=')) tzDesdeUrl(); });
 
 /* ================= paneles arrastrables (escritorio) ================= */
 const POS_KEY = 'sm_pos';
@@ -2342,6 +2488,10 @@ const I18N = {
     listaPeriodo:'Eventos del período', mostrarMas:'Mostrar más',
     navTrazo:'Trazo', tzLimpiar:'Limpiar', tzVerLista:'Ver lista', tzOcultarLista:'Ocultar lista',
     tzCopiar:'📋 Copiar', tzCopiado:'✓ Copiado',
+    tzEnlace:'🔗 Enlace', tzEnlaceListo:'✓ Enlace copiado', tzGuardar:'💾 Guardar', tzGuardado:'✓ Guardado',
+    tzMisTrazos:'— Mis trazos —', tzBorrarTrazo:'🗑 Borrar este trazo',
+    tzNombre:'Ponle un nombre a este trazo:', tzCargado:'Trazo cargado: {n}',
+    tzNoEncontrado:'Algunos sismos del enlace ya no están disponibles ({n} de {tot} cargados).',
     tzAyuda:'Toca los sismos para unirlos. El globo queda quieto; puedes girarlo arrastrando.',
     tzResumen:'<b>{n}</b> sismos · <b>{km}</b> km · {dias}',
     tzUnDia:'mismo día', tzDias:'{d} días de diferencia',
@@ -2426,6 +2576,10 @@ const I18N = {
     listaPeriodo:'Events in this period', mostrarMas:'Show more',
     navTrazo:'Trace', tzLimpiar:'Clear', tzVerLista:'Show list', tzOcultarLista:'Hide list',
     tzCopiar:'📋 Copy', tzCopiado:'✓ Copied',
+    tzEnlace:'🔗 Link', tzEnlaceListo:'✓ Link copied', tzGuardar:'💾 Save', tzGuardado:'✓ Saved',
+    tzMisTrazos:'— My traces —', tzBorrarTrazo:'🗑 Delete this trace',
+    tzNombre:'Name this trace:', tzCargado:'Trace loaded: {n}',
+    tzNoEncontrado:'Some earthquakes from the link are no longer available ({n} of {tot} loaded).',
     tzAyuda:'Tap earthquakes to connect them. The globe stays still; drag to rotate it.',
     tzResumen:'<b>{n}</b> earthquakes · <b>{km}</b> km · {dias}',
     tzUnDia:'same day', tzDias:'{d} days apart',
@@ -2702,6 +2856,7 @@ function applyData(list){
   applyFilters();
   revisarAlertas(allQuakes);
   resolverEnlaceProfundo();
+  if(!tzUrlHecho && location.hash.includes('trazo=')){ tzUrlHecho = true; tzDesdeUrl(); }
   document.getElementById('updated').textContent = new Date().toLocaleTimeString('es');
 }
 
