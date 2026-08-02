@@ -106,6 +106,59 @@ body{
 }
 
 
+/* modo trazo manual */
+#tzBar{
+  display:none;position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  z-index:28;width:min(620px,94vw);
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  backdrop-filter:blur(10px);padding:11px 14px;
+}
+#tzBar.on{display:block}
+#tzBar .tztop{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+#tzBar button{
+  background:#161d26;color:var(--text);border:1px solid var(--line);border-radius:7px;
+  font-family:inherit;font-size:11.5px;cursor:pointer;padding:5px 10px;
+}
+#tzBar button:hover{border-color:var(--accent)}
+#tzInfo{font-size:11px;color:var(--muted);margin-left:auto;text-align:right;line-height:1.4}
+#tzInfo b{color:var(--text)}
+#tzLista{
+  display:none;max-height:150px;overflow-y:auto;margin-top:9px;
+  border-top:1px solid var(--line);padding-top:8px;
+}
+#tzLista.on{display:block}
+#tzLista .tzrow{
+  display:grid;grid-template-columns:20px 40px 1fr auto;gap:8px;align-items:center;
+  padding:5px 4px;font-size:11px;border-radius:6px;cursor:pointer;
+}
+#tzLista .tzrow:hover{background:#161d26}
+#tzLista .tzn{color:var(--muted);font-size:10px;text-align:center}
+#tzLista .tzm{
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:11px;border-radius:5px;color:#0b0f14;padding:2px 0;
+}
+#tzLista .tzd{color:var(--muted);font-size:10px;white-space:nowrap}
+#tzLista::-webkit-scrollbar{width:5px}
+#tzLista::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+body.trazo #scene{cursor:crosshair}
+body.trazo .quake.tzsel{border-color:#6ad8c0;background:#16262a}
+@media (max-width:820px){ #tzBar{bottom:64px;padding:9px 11px} #tzInfo{width:100%;text-align:left;margin-left:0} }
+
+/* paneles arrastrables (escritorio) */
+@media (min-width:821px){
+  .panel h2, #timeline h2{cursor:move;user-select:none}
+  .panel.movido, #timeline.movido{transition:none}
+  .panel.arrastrando, #timeline.arrastrando{opacity:.92;box-shadow:0 8px 32px rgba(0,0,0,.55)}
+  #resetPos{
+    position:fixed;left:16px;bottom:14px;z-index:16;display:none;
+    background:var(--panel);color:var(--muted);border:1px solid var(--line);
+    border-radius:7px;padding:5px 10px;font-family:inherit;font-size:10px;cursor:pointer;
+    backdrop-filter:blur(8px);
+  }
+  #resetPos.on{display:block}
+  #resetPos:hover{color:var(--text);border-color:var(--accent)}
+}
+
 /* bienvenida (onboarding) */
 #bienv{
   display:none;position:fixed;inset:0;z-index:60;
@@ -498,6 +551,7 @@ body.ocultarT #timeline{display:none}
   <h1>SISMO<span>·</span>MONITOR</h1>
   <div class="hctrl">
     <button id="langBtn" title="English / Español">EN</button>
+    <button id="tzBtn" title="Modo trazo manual">✎</button>
     <button id="pnDatos" title="Datos">▤</button>
     <button id="pnEventos" title="Eventos">≡</button>
     <button id="pnTl" title="Sismógrafo 24 h">∿</button>
@@ -641,6 +695,8 @@ body.ocultarT #timeline{display:none}
   <div class="anota" id="anNota"></div>
 </div>
 
+<button id="resetPos" data-i18n="resetPos">↺ Restablecer posición de los paneles</button>
+
 <div id="bienv">
   <div id="bvCard">
     <!-- paso 1 -->
@@ -672,10 +728,23 @@ body.ocultarT #timeline{display:none}
   </div>
 </div>
 
+<div id="tzBar">
+  <div class="tztop">
+    <button id="tzUndo" title="Deshacer último">↶</button>
+    <button id="tzClear" data-i18n="tzLimpiar">Limpiar</button>
+    <button id="tzToggleList" data-i18n="tzVerLista">Ver lista</button>
+    <button id="tzShare" data-i18n="tzCopiar">📋 Copiar</button>
+    <button id="tzClose" title="Salir">✕</button>
+    <span id="tzInfo"></span>
+  </div>
+  <div id="tzLista"></div>
+</div>
+
 <div id="rpBar">
   <div class="rptop">
     <button id="rpPlay">⏸</button>
     <button id="rpRestart" title="Reiniciar">↺</button>
+    <button id="rpLine" title="Trazo del recorrido">〰</button>
     <select id="rpSpeed">
       <option value="1">1×</option><option value="2" selected>2×</option>
       <option value="4">4×</option><option value="8">8×</option>
@@ -723,6 +792,7 @@ body.ocultarT #timeline{display:none}
   <button id="mnEventos"><span class="ico">≡</span><span data-i18n="navEventos">Eventos</span></button>
   <button id="mnTl"><span class="ico">∿</span>24 h</button>
   <button id="mnAnal"><span class="ico">📊</span><span data-i18n="navAnalisis">Análisis</span></button>
+  <button id="mnTz"><span class="ico">✎</span><span data-i18n="navTrazo">Trazo</span></button>
 </nav>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -875,6 +945,7 @@ function addMarkers(quakes){
 
 /* ================= interacción ================= */
 const VEL_ROTACION = 2*Math.PI/120;   // rotación ambiental: 1 vuelta cada 2 minutos
+let VEL_ROTACION_ACTUAL = VEL_ROTACION;   // 0 mientras el modo trazo está activo
 let dragging=false, px=0, py=0, rotY=0, rotX=0.35, targetDist=camDist;
 const pointers = new Map();   // punteros activos (dedos o mouse)
 let pinchDist = 0;
@@ -970,7 +1041,9 @@ const esMovilTactil = ()=>matchMedia('(pointer:coarse)').matches;
 canvas.addEventListener('click', e=>{
   if(downAt && Math.hypot(e.clientX-downAt[0], e.clientY-downAt[1])>10) return; // fue drag
   const q = marcadorEn(e.clientX, e.clientY);
-  if(q) selectQuake(q, true);
+  if(!q) return;
+  if(tzActivo){ tzAlternar(q); return; }   // en modo trazo, el clic conecta puntos
+  selectQuake(q, true);
 });
 
 /* volar hacia un punto */
@@ -1624,7 +1697,8 @@ function renderList(){
         <div class="qplace">${q.tsunami?'<span class="tsubadge">🌊 </span>':''}${q.place}</div>
         <div class="qmeta">${fmtTime(q.time)} · ${t('prof')} ${q.depth.toFixed(0)} km · <span style="color:${q.src==='FUNVISIS'?'var(--accent)':'var(--muted)'}">${q.src}</span></div>
       </div>`;
-    d.onclick=()=>selectQuake(q,true);
+    d.onclick=()=>{ if(tzActivo){ tzAlternar(q); return; } selectQuake(q,true); };
+    if(tzActivo && tzSel.some(x=>x.id===q.id)) d.classList.add('tzsel');
     list.appendChild(d);
   });
   document.getElementById('listCount').textContent = quakes.length;
@@ -1749,6 +1823,11 @@ let rpActivo=false, rpPausa=false, rpDatos=[], rpIdx=0, rpReloj=0, rpT0=0, rpT1=
 let rpVel=2, rpUltimoUI=0;
 const rpGrupo = new THREE.Group();
 globe.add(rpGrupo);
+/* trazo que une los epicentros en orden cronológico: dibuja el recorrido
+   de la secuencia sísmica y permanece hasta cerrar la reproducción */
+const rpTrazo = new THREE.Group();
+globe.add(rpTrazo);
+let rpTrazoOn = true;
 const RP_DUR_BASE = 45;   // segundos de reloj real para recorrer todo el rango a 1×
 
 /* geometrías y materiales compartidos por banda: mantiene bajo el coste en móviles */
@@ -1763,6 +1842,26 @@ const rpBandas = [
   mat: new THREE.MeshBasicMaterial({color:b.col})
 }));
 const rpBanda = m => rpBandas.find(b=>m < b.max) || rpBandas[3];
+
+const rpMatTrazo = new THREE.LineBasicMaterial({color:0xf07f3c, transparent:true, opacity:0.42});
+
+/* arco geodésico entre dos epicentros, elevado sobre la superficie para que
+   no se hunda en el globo; el número de segmentos crece con la distancia */
+function rpArco(a, b){
+  const v1 = latLonToV3(a.lat, a.lon, 1).normalize();
+  const v2 = latLonToV3(b.lat, b.lon, 1).normalize();
+  const ang = Math.acos(Math.max(-1, Math.min(1, v1.dot(v2))));
+  const n = Math.max(2, Math.min(48, Math.ceil(ang*22)));
+  const alturaMax = 1.004 + Math.min(0.06, ang*0.05);
+  const pts = [];
+  for(let i=0;i<=n;i++){
+    const s = i/n;
+    const v = new THREE.Vector3().copy(v1).lerp(v2, s).normalize();
+    const alza = 1.004 + (alturaMax-1.004)*Math.sin(Math.PI*s);
+    pts.push(v.multiplyScalar(R*alza));
+  }
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), rpMatTrazo);
+}
 
 function rpIniciar(datos, regK){
   const lista = (datos||[]).filter(d=>isFinite(d.lat)&&isFinite(d.lon)&&d.time)
@@ -1801,12 +1900,13 @@ function rpIniciar(datos, regK){
 
 function rpLimpiar(){
   rpGrupo.clear();
+  rpTrazo.clear();
   rpIdx = 0;
 }
 
 function rpSalir(){
   rpActivo = false;
-  rpLimpiar();
+  rpLimpiar();          // el trazo permanece durante toda la reproducción y se borra al cerrar
   markerGroup.visible = true;
   document.getElementById('rpBar').classList.remove('on');
 }
@@ -1821,6 +1921,11 @@ function rpAvanzar(){
     m.userData.nace = performance.now();
     m.scale.setScalar(0.01);
     rpGrupo.add(m);
+
+    // unir con el evento anterior (tope de segmentos para no ahogar equipos modestos)
+    if(rpTrazoOn && rpIdx > 0 && rpTrazo.children.length < 2500){
+      rpTrazo.add(rpArco(rpDatos[rpIdx-1], d));
+    }
     rpIdx++;
   }
 }
@@ -1852,7 +1957,7 @@ function rpActualizarUI(forzar){
 /* saltar a una posición del recorrido */
 function rpBuscar(frac){
   rpReloj = rpT0 + (rpT1-rpT0)*Math.max(0,Math.min(1,frac));
-  rpLimpiar();          // reconstruir desde el inicio hasta ese punto
+  rpLimpiar();          // reconstruir desde el inicio hasta ese punto (marcadores y trazo)
   rpAvanzar();
   rpGrupo.children.forEach(m=>{ m.userData.nace = 0; m.scale.setScalar(1); });
   rpActualizarUI(true);
@@ -1872,6 +1977,16 @@ document.getElementById('rpRestart').addEventListener('click', ()=>{
   rpActualizarUI(true);
 });
 document.getElementById('rpSpeed').addEventListener('change', e=>{ rpVel = parseFloat(e.target.value); });
+document.getElementById('rpLine').addEventListener('click', ()=>{
+  rpTrazoOn = !rpTrazoOn;
+  rpTrazo.visible = rpTrazoOn;
+  document.getElementById('rpLine').style.color = rpTrazoOn ? 'var(--accent)' : 'var(--muted)';
+  // si se reactiva a media reproducción, reconstruir el recorrido ya recorrido
+  if(rpTrazoOn && rpTrazo.children.length === 0){
+    for(let i=1;i<rpIdx && rpTrazo.children.length<2500;i++) rpTrazo.add(rpArco(rpDatos[i-1], rpDatos[i]));
+  }
+});
+document.getElementById('rpLine').style.color = 'var(--accent)';
 document.getElementById('rpClose').addEventListener('click', rpSalir);
 document.getElementById('rpProg').addEventListener('click', e=>{
   const r = e.currentTarget.getBoundingClientRect();
@@ -1879,6 +1994,210 @@ document.getElementById('rpProg').addEventListener('click', e=>{
 });
 
 /* ================= reproducción animada (fin) ================= */
+
+/* ================= modo trazo manual ================= */
+let tzActivo=false, tzSel=[], tzRotGuardada=null;
+const tzGrupo = new THREE.Group();
+globe.add(tzGrupo);
+const tzMatLinea = new THREE.LineBasicMaterial({color:0x6ad8c0, transparent:true, opacity:.85});
+const tzMatAro = new THREE.MeshBasicMaterial({color:0x6ad8c0, side:THREE.DoubleSide, transparent:true, opacity:.9});
+
+function abrirTrazo(){
+  cerrarPaneles();
+  tzActivo = true;
+  document.body.classList.add('trazo');
+  document.getElementById('tzBar').classList.add('on');
+  document.getElementById('mnTz').classList.add('act');
+  document.getElementById('mnGlobo').classList.remove('act');
+  tzRotGuardada = VEL_ROTACION_ACTUAL;
+  VEL_ROTACION_ACTUAL = 0;              // el globo se detiene; se gira arrastrando
+  tzActualizar();
+}
+function cerrarTrazo(){
+  tzActivo = false;
+  document.body.classList.remove('trazo');
+  document.getElementById('tzBar').classList.remove('on');
+  document.getElementById('mnTz').classList.remove('act');
+  if(tzRotGuardada!==null) VEL_ROTACION_ACTUAL = tzRotGuardada;
+  tzLimpiarTodo();
+}
+
+/* añade o quita un sismo del trazo */
+function tzAlternar(q){
+  const i = tzSel.findIndex(x=>x.id===q.id);
+  if(i>=0) tzSel.splice(i,1); else tzSel.push(q);
+  tzRedibujar();
+  tzActualizar();
+}
+function tzLimpiarTodo(){
+  tzSel = [];
+  tzRedibujar();
+  tzActualizar();
+}
+
+function tzRedibujar(){
+  tzGrupo.clear();
+  tzSel.forEach((q,i)=>{
+    // aro que resalta el sismo elegido
+    const size = Math.max(1.4, q.mag*0.7);
+    const aro = new THREE.Mesh(new THREE.RingGeometry(size*1.6, size*2.1, 26), tzMatAro);
+    aro.position.copy(latLonToV3(q.lat, q.lon, R*1.007));
+    aro.lookAt(0,0,0);
+    tzGrupo.add(aro);
+    // segmento hacia el anterior
+    if(i>0){
+      const v1 = latLonToV3(tzSel[i-1].lat, tzSel[i-1].lon, 1).normalize();
+      const v2 = latLonToV3(q.lat, q.lon, 1).normalize();
+      const ang = Math.acos(Math.max(-1,Math.min(1, v1.dot(v2))));
+      const n = Math.max(2, Math.min(48, Math.ceil(ang*22)));
+      const alt = 1.006 + Math.min(0.05, ang*0.04);
+      const pts = [];
+      for(let k=0;k<=n;k++){
+        const s = k/n;
+        const v = new THREE.Vector3().copy(v1).lerp(v2, s).normalize();
+        pts.push(v.multiplyScalar(R*(1.006 + (alt-1.006)*Math.sin(Math.PI*s))));
+      }
+      tzGrupo.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), tzMatLinea));
+    }
+  });
+  // resaltar en la lista de eventos
+  document.querySelectorAll('#list .quake').forEach(el=>{
+    el.classList.toggle('tzsel', tzSel.some(q=>q.id===el.dataset.id));
+  });
+}
+
+function tzActualizar(){
+  const info = document.getElementById('tzInfo');
+  if(!tzSel.length){ info.innerHTML = t('tzAyuda'); }
+  else{
+    let km = 0;
+    for(let i=1;i<tzSel.length;i++)
+      km += distKm(tzSel[i-1].lat, tzSel[i-1].lon, tzSel[i].lat, tzSel[i].lon);
+    const t0 = Math.min(...tzSel.map(q=>q.time)), t1 = Math.max(...tzSel.map(q=>q.time));
+    const d = Math.round((t1-t0)/86400e3);
+    info.innerHTML = t('tzResumen')
+      .replace('{n}', tzSel.length)
+      .replace('{km}', Math.round(km).toLocaleString(LANG==='en'?'en-GB':'es'))
+      .replace('{dias}', d<1 ? t('tzUnDia') : t('tzDias').replace('{d}', d));
+  }
+  // lista detallada
+  const cont = document.getElementById('tzLista');
+  cont.innerHTML = '';
+  tzSel.forEach((q,i)=>{
+    const dist = i>0 ? Math.round(distKm(tzSel[i-1].lat, tzSel[i-1].lon, q.lat, q.lon))+' km' : '—';
+    const row = document.createElement('div');
+    row.className = 'tzrow';
+    row.innerHTML = `<span class="tzn">${i+1}</span>
+      <span class="tzm" style="background:${magCss(q.mag)}">${q.mag.toFixed(1)}</span>
+      <span>${q.place||'—'}</span>
+      <span class="tzd">${fmtTime(q.time).split(',')[0]} · ${dist}</span>`;
+    row.onclick = ()=>selectQuake(q, true);
+    cont.appendChild(row);
+  });
+}
+
+/* controles */
+document.getElementById('tzBtn').addEventListener('click', ()=>{ tzActivo ? cerrarTrazo() : abrirTrazo(); });
+document.getElementById('mnTz').addEventListener('click', ()=>{ tzActivo ? cerrarTrazo() : abrirTrazo(); });
+document.getElementById('tzClose').addEventListener('click', cerrarTrazo);
+document.getElementById('tzClear').addEventListener('click', tzLimpiarTodo);
+document.getElementById('tzUndo').addEventListener('click', ()=>{ tzSel.pop(); tzRedibujar(); tzActualizar(); });
+document.getElementById('tzToggleList').addEventListener('click', e=>{
+  const l = document.getElementById('tzLista');
+  l.classList.toggle('on');
+  e.target.textContent = l.classList.contains('on') ? t('tzOcultarLista') : t('tzVerLista');
+});
+document.getElementById('tzShare').addEventListener('click', async e=>{
+  if(!tzSel.length) return;
+  let km = 0;
+  for(let i=1;i<tzSel.length;i++) km += distKm(tzSel[i-1].lat, tzSel[i-1].lon, tzSel[i].lat, tzSel[i].lon);
+  const txt = 'SISMO·MONITOR — ' + t('navTrazo') + '\n' +
+    tzSel.map((q,i)=>`${i+1}. M${q.mag.toFixed(1)} — ${q.place} — ${fmtTime(q.time)}`).join('\n') +
+    `\n(${tzSel.length} · ${Math.round(km)} km)\n` + location.origin + location.pathname;
+  try{ await navigator.clipboard.writeText(txt); e.target.textContent = t('tzCopiado');
+       setTimeout(()=>{ e.target.textContent = t('tzCopiar'); }, 2200); }catch(err){}
+});
+
+/* ================= paneles arrastrables (escritorio) ================= */
+const POS_KEY = 'sm_pos';
+let posGuardadas = {};
+try{ posGuardadas = JSON.parse(localStorage.getItem(POS_KEY)) || {}; }catch(e){}
+
+function aplicarPos(id){
+  const p = posGuardadas[id];
+  if(!p || esMovil()) return;
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.add('movido');
+  el.style.left = p.x+'px';
+  el.style.top  = p.y+'px';
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+  el.style.transform = 'none';
+  document.getElementById('resetPos').classList.add('on');
+}
+
+function hacerArrastrable(id, asa){
+  const el = document.getElementById(id);
+  const h = el.querySelector(asa);
+  if(!el || !h) return;
+  let ox=0, oy=0, activo=false;
+
+  h.addEventListener('pointerdown', e=>{
+    if(esMovil()) return;                 // en móvil las hojas se deslizan, no se arrastran
+    if(e.target.closest('button,select,input,a')) return;
+    const r = el.getBoundingClientRect();
+    // fijar la posición actual antes de mover (los paneles usan right/bottom)
+    el.classList.add('movido','arrastrando');
+    el.style.left = r.left+'px';
+    el.style.top  = r.top+'px';
+    el.style.right='auto'; el.style.bottom='auto'; el.style.transform='none';
+    ox = e.clientX - r.left;
+    oy = e.clientY - r.top;
+    activo = true;
+    h.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  h.addEventListener('pointermove', e=>{
+    if(!activo) return;
+    const r = el.getBoundingClientRect();
+    // no dejar que el panel se pierda fuera de la pantalla
+    const x = Math.max(-r.width+90,  Math.min(innerWidth-60,  e.clientX-ox));
+    const y = Math.max(0,            Math.min(innerHeight-44, e.clientY-oy));
+    el.style.left = x+'px';
+    el.style.top  = y+'px';
+  });
+
+  const soltar = ()=>{
+    if(!activo) return;
+    activo = false;
+    el.classList.remove('arrastrando');
+    posGuardadas[id] = {x: parseInt(el.style.left), y: parseInt(el.style.top)};
+    try{ localStorage.setItem(POS_KEY, JSON.stringify(posGuardadas)); }catch(e){}
+    document.getElementById('resetPos').classList.add('on');
+    if(id==='timeline') renderTimeline();
+  };
+  h.addEventListener('pointerup', soltar);
+  h.addEventListener('pointercancel', soltar);
+}
+
+['left','right','timeline','analisis','info'].forEach(id=>{
+  hacerArrastrable(id, 'h2');
+  aplicarPos(id);
+});
+
+document.getElementById('resetPos').addEventListener('click', ()=>{
+  posGuardadas = {};
+  try{ localStorage.removeItem(POS_KEY); }catch(e){}
+  ['left','right','timeline','analisis','info'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.classList.remove('movido');
+    el.style.left=el.style.top=el.style.right=el.style.bottom=el.style.transform='';
+  });
+  document.getElementById('resetPos').classList.remove('on');
+  renderTimeline();
+});
 
 /* ================= bienvenida (onboarding) ================= */
 let bvPaso = 1, bvPromptInstalar = null;
@@ -2021,6 +2340,12 @@ const I18N = {
     archNota:' Incluye {n} sismos menores detectados por la red local.',
     buscandoArch:'Buscando el sismo…',
     listaPeriodo:'Eventos del período', mostrarMas:'Mostrar más',
+    navTrazo:'Trazo', tzLimpiar:'Limpiar', tzVerLista:'Ver lista', tzOcultarLista:'Ocultar lista',
+    tzCopiar:'📋 Copiar', tzCopiado:'✓ Copiado',
+    tzAyuda:'Toca los sismos para unirlos. El globo queda quieto; puedes girarlo arrastrando.',
+    tzResumen:'<b>{n}</b> sismos · <b>{km}</b> km · {dias}',
+    tzUnDia:'mismo día', tzDias:'{d} días de diferencia',
+    resetPos:'↺ Restablecer posición de los paneles',
     bvT1:'Bienvenido a SISMO<span>·</span>MONITOR',
     bvIntro:'Un panel gratuito para ver los sismos que ocurren en el mundo, minuto a minuto, con especial atención a Venezuela y el Caribe.',
     bvF1:'Toca cualquier punto del globo o de la lista para ver magnitud, ubicación, hora y profundidad.',
@@ -2099,6 +2424,12 @@ const I18N = {
     archNota:' Includes {n} smaller earthquakes detected by the local network.',
     buscandoArch:'Looking for the earthquake…',
     listaPeriodo:'Events in this period', mostrarMas:'Show more',
+    navTrazo:'Trace', tzLimpiar:'Clear', tzVerLista:'Show list', tzOcultarLista:'Hide list',
+    tzCopiar:'📋 Copy', tzCopiado:'✓ Copied',
+    tzAyuda:'Tap earthquakes to connect them. The globe stays still; drag to rotate it.',
+    tzResumen:'<b>{n}</b> earthquakes · <b>{km}</b> km · {dias}',
+    tzUnDia:'same day', tzDias:'{d} days apart',
+    resetPos:'↺ Reset panel positions',
     bvT1:'Welcome to SISMO<span>·</span>MONITOR',
     bvIntro:'A free dashboard to see earthquakes happening worldwide, minute by minute, with special attention to Venezuela and the Caribbean.',
     bvF1:'Tap any point on the globe or in the list to see magnitude, location, time and depth.',
@@ -2589,7 +2920,7 @@ function animate(){
     if(Math.abs(flyTarget.rotY-rotY)<0.002 && Math.abs(flyTarget.rotX-rotX)<0.002) flyTarget=null;
   } else if(!dragging){
     const dt = t - (animate._t ?? t);
-    rotY += VEL_ROTACION * dt; // radianes/segundo, independiente de los FPS
+    rotY += VEL_ROTACION_ACTUAL * dt; // radianes/segundo, independiente de los FPS
   }
   animate._t = t;
   globe.rotation.y = rotY;
