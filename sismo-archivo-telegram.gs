@@ -96,6 +96,24 @@ var EXCLUIR_NIDO_BAJO = 4.5;
 var URL_USGS = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
 var URL_EMSC = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=800&starttime=';
 
+/* FUNVISIS describe cada sismo respecto a la ciudad más cercana, que a veces
+   está fuera de Venezuela (Bucaramanga, Santa Marta, Barbados, Bonaire...).
+   Etiquetar todo como "Venezuela" era incorrecto y confunde en el canal. */
+var REF_PAIS = {
+  'bucaramanga':'Colombia', 'santa marta':'Colombia', 'cucuta':'Colombia',
+  'valledupar':'Colombia', 'riohacha':'Colombia', 'maicao':'Colombia',
+  'arauca':'Colombia', 'barranquilla':'Colombia',
+  'barbados':'Barbados', 'bonaire':'Países Bajos', 'curazao':'Países Bajos',
+  'aruba':'Países Bajos', 'trinidad':'Trinidad y Tobago',
+  'tobago':'Trinidad y Tobago', 'scarborough':'Trinidad y Tobago',
+  'granada':'Granada', 'georgetown':'Guyana'
+};
+function paisDeLugar_(txt) {
+  var t = String(txt || '').toLowerCase();
+  for (var ref in REF_PAIS) { if (t.indexOf(ref) !== -1) return REF_PAIS[ref]; }
+  return 'Venezuela';
+}
+
 /* ================= función principal (la del trigger) ================= */
 
 function vigilarSismos() {
@@ -116,7 +134,10 @@ function vigilarSismos() {
         lat: parseFloat(p.lat),
         lon: parseFloat(p.long),
         prof: parseFloat(p.depth) || 0,
-        lugar: (p.addressFormatted || '—') + ', Venezuela'
+        lugar: (function () {
+          var l = p.addressFormatted || '—';
+          return l + ', ' + paisDeLugar_(l);
+        })()
       });
     });
     saludRegistrar_('funvisis', true);

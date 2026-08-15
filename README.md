@@ -22,6 +22,7 @@
 - **Avisos de tsunami y nivel PAGER** de impacto estimado (USGS), más número de reportes ciudadanos.
 - **Vista satelital** con seguimiento GPS en tiempo real y capa diaria de la NASA, sin claves de API.
 - **Análisis histórico** con gráficas de magnitud y frecuencia hasta 60 días o desde una fecha fija, filtrable por región.
+- **Exportación de reportes** del período y región seleccionados en CSV, TXT y GeoJSON.
 - **Replay animado**: reproduce la secuencia de sismos sobre el globo, con control de velocidad y búsqueda.
 - **Modo trazo**: conecta sismos manualmente para medir alineaciones, con guardado y enlaces compartibles.
 - **Canal de Telegram** con validación cruzada entre redes, imagen del epicentro y pin de mapa.
