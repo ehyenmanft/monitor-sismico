@@ -1651,6 +1651,13 @@ function iniciarSat(){
       maxNativeZoom: 9, maxZoom: 12,
       attribution: 'Imagen de ' + ayer + ' © NASA EOSDIS GIBS'
     });
+    /* Orden de dibujo mediante paneles de Leaflet: las placas por debajo,
+       los sismos encima y el trazo manual al frente. (L.layerGroup NO tiene
+       bringToBack/bringToFront: llamarlos lanza una excepción.) */
+    satMapa.createPane('panePlacas').style.zIndex = 390;
+    satMapa.createPane('paneSismos').style.zIndex = 410;
+    satMapa.createPane('paneTrazo').style.zIndex = 430;
+
     satCapa = L.layerGroup().addTo(satMapa);
 
     /* límites de placas: se parten en el antimeridiano para que ningún
@@ -1673,7 +1680,7 @@ function iniciarSat(){
       if(actual.length>1) tramos.push(actual);
     });
     tramos.forEach(t=>L.polyline(t, {
-      color:'#b0603a', weight:1.4, opacity:.55, interactive:false
+      color:'#b0603a', weight:1.4, opacity:.55, interactive:false, pane:'panePlacas'
     }).addTo(satPlacas));
     if(document.getElementById('lyPlacas').checked) satPlacas.addTo(satMapa);
     satTrazo = L.layerGroup().addTo(satMapa);
@@ -1686,13 +1693,12 @@ function iniciarSat(){
 function pintarSismosSat(){
   if(!satCapa) return;
   satCapa.clearLayers();
-  if(satPlacas && satMapa.hasLayer(satPlacas)) satPlacas.bringToBack();
   quakes.forEach(q=>{
     const col = '#'+magColor(q.mag).toString(16).padStart(6,'0');
     const m = L.circleMarker([q.lat, q.lon], {
       radius: Math.max(5, q.mag*1.9),
       color: col, fillColor: col, fillOpacity:.72, weight:2,
-      opacity:1
+      opacity:1, pane:'paneSismos'
     }).addTo(satCapa);
     if(tzActivo){
       // en modo trazo, tocar un sismo lo une al recorrido en vez de abrir su ficha
@@ -1712,10 +1718,10 @@ function tzPintarMapa(){
   tzSel.forEach((q,i)=>{
     L.circleMarker([q.lat, q.lon], {
       radius: Math.max(7, q.mag*2.1), color:'#6ad8c0', weight:2.5,
-      fill:false, interactive:false
+      fill:false, interactive:false, pane:'paneTrazo'
     }).addTo(satTrazo);
     L.marker([q.lat, q.lon], {
-      interactive:false,
+      interactive:false, pane:'paneTrazo',
       icon: L.divIcon({className:'tznum', html:String(i+1), iconSize:[16,16]})
     }).addTo(satTrazo);
     if(i>0){
@@ -1724,11 +1730,10 @@ function tzPintarMapa(){
       // tomar siempre el camino corto entre los dos puntos
       if(Math.abs(lon2-a.lon) > 180) lon2 += (a.lon > 0 ? 360 : -360);
       L.polyline([[a.lat, a.lon],[q.lat, lon2]], {
-        color:'#6ad8c0', weight:2, opacity:.85, interactive:false
+        color:'#6ad8c0', weight:2, opacity:.85, interactive:false, pane:'paneTrazo'
       }).addTo(satTrazo);
     }
   });
-  satTrazo.bringToFront();
 }
 function vigilarUbicacionSat(){
   if(satWatch!==null || !navigator.geolocation) return;
