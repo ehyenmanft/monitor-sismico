@@ -263,6 +263,20 @@ body.trazo .quake.tzsel{border-color:#6ad8c0;background:#16262a}
   border-radius:7px;padding:4px 9px;font-family:inherit;font-size:11px;cursor:pointer;
 }
 .hctrl button:hover{color:var(--text);border-color:var(--accent)}
+.hctrl button.tgbtn{
+  background:#2aabee;border-color:#2aabee;color:#fff;
+  padding:4px 9px;display:inline-flex;align-items:center;justify-content:center;
+  box-shadow:0 0 0 0 rgba(42,171,238,.55);
+  animation:tgPulso 3.2s ease-out infinite;
+}
+.hctrl button.tgbtn:hover{background:#1f95d4;border-color:#1f95d4}
+.hctrl button.tgbtn svg{width:15px;height:15px;fill:#fff;display:block}
+@keyframes tgPulso{
+  0%{box-shadow:0 0 0 0 rgba(42,171,238,.5)}
+  60%{box-shadow:0 0 0 9px rgba(42,171,238,0)}
+  100%{box-shadow:0 0 0 0 rgba(42,171,238,0)}
+}
+@media (prefers-reduced-motion:reduce){ .hctrl button.tgbtn{animation:none} }
 #kioskExit{
   display:none;position:fixed;top:14px;right:14px;z-index:40;
   background:var(--panel);color:var(--muted);border:1px solid var(--line);
@@ -572,7 +586,8 @@ body.ocultarT #timeline{display:none}
     <button id="pnEventos" title="Eventos">≡</button>
     <button id="pnTl" title="Sismógrafo 24 h">∿</button>
     <button id="eyeBtn" title="Mostrar / ocultar menús">👁</button>
-    <button id="infoBtn" title="Información">ℹ</button>
+    <button id="infoBtn" title="Canal de avisos en Telegram e información" class="tgbtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.06-.87 1.32-1.76.82l-4.86-3.58-2.35 2.26c-.26.26-.48.48-.98.48l.35-4.94L18 5.86c.39-.35-.08-.54-.6-.19L6.6 12.55l-4.79-1.5c-1.04-.33-1.06-1.04.22-1.54l18.72-7.22c.87-.32 1.63.2 1.15 2.01z"/></svg></button>
+    <button id="mapBtn" title="Vista mapa plano con ciudades">🗺</button>
     <button id="satBtn" title="Vista satélite">🛰</button>
     <button id="analBtn" title="Análisis">📊</button>
     <button id="kioskBtn" title="Modo pantalla completa">⛶</button>
@@ -783,12 +798,13 @@ body.ocultarT #timeline{display:none}
 
 <div class="panel" id="info">
   <button id="infoClose">✕</button>
-  <h2 data-i18n="infoT">Qué es SISMO·MONITOR</h2>
-  <p data-i18n="infoQue"></p>
-
-  <h3 data-i18n="infoCanalT">Canal de avisos en Telegram</h3>
+  <h2 data-i18n="infoCanalT">Canal de avisos en Telegram</h2>
   <p data-i18n="infoCanalTxt"></p>
   <a id="tgBtn" href="#" target="_blank" rel="noopener"><span data-i18n="infoCanalBtn">Unirme al canal</span> ↗</a>
+  <p class="glink" style="margin-top:6px" id="tgHandle"></p>
+
+  <h3 data-i18n="infoT">Qué es SISMO·MONITOR</h3>
+  <p data-i18n="infoQue"></p>
 
   <h3 data-i18n="infoAvisoT">Aviso importante</h3>
   <div class="aviso"><p data-i18n="infoAviso"></p></div>
@@ -1537,7 +1553,7 @@ function dibujarBarrasDia(datos, dias){
 
 /* ================= mapa satelital ================= */
 let satMapa=null, satCapa=null, satWatch=null, satYo=null, satYoCirc=null, leafletListo=false;
-let satCapaEsri=null, satCapaNasa=null, satCapaActual='esri';
+let satCapaEsri=null, satCapaNasa=null, satCapaMapa=null, satCapaActual='mapa';
 
 function cargarLeaflet(cb){
   if(leafletListo){ cb(); return; }
@@ -1557,18 +1573,36 @@ function cargarLeaflet(cb){
   document.head.appendChild(s);
 }
 
-function abrirSat(){
+function abrirSat(capa){
   cerrarPaneles('sat');
+  if(capa) satCapaActual = capa;
   document.getElementById('satmapa').classList.add('on');
   cargarLeaflet(iniciarSat);
+}
+
+/* deja visible solo la capa activa, siempre por debajo de los marcadores */
+function aplicarCapaSat(){
+  if(!satMapa) return;
+  const capas = {mapa:satCapaMapa, esri:satCapaEsri, nasa:satCapaNasa};
+  Object.keys(capas).forEach(k=>{
+    const c = capas[k];
+    if(!c) return;
+    if(k === satCapaActual){ if(!satMapa.hasLayer(c)) c.addTo(satMapa); c.bringToBack(); }
+    else if(satMapa.hasLayer(c)) satMapa.removeLayer(c);
+  });
 }
 function iniciarSat(){
   if(!satMapa){
     satMapa = L.map('satmapa', {zoomControl:true}).setView([10.5,-66.9], 6);
+    // mapa plano con nombres de ciudades, fronteras y carreteras (tema oscuro)
+    satCapaMapa = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19, subdomains: 'abcd',
+      attribution: '© OpenStreetMap · © CARTO'
+    });
     satCapaEsri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       attribution: 'Imágenes © Esri · Maxar · Earthstar Geographics'
-    }).addTo(satMapa);
+    });
     // imagen diaria de la NASA (VIIRS, procesada con ~1 día de retraso)
     const ayer = new Date(Date.now() - 86400e3).toISOString().slice(0,10);
     satCapaNasa = L.tileLayer(
@@ -1579,6 +1613,7 @@ function iniciarSat(){
     });
     satCapa = L.layerGroup().addTo(satMapa);
   }
+  aplicarCapaSat();
   pintarSismosSat();
   vigilarUbicacionSat();
   setTimeout(()=>satMapa.invalidateSize(), 120);
@@ -1620,7 +1655,14 @@ function cerrarSat(){
   if(satWatch!==null){ navigator.geolocation.clearWatch(satWatch); satWatch=null; }
 }
 document.getElementById('satBtn').addEventListener('click', ()=>{
-  document.getElementById('satmapa').classList.contains('on') ? cerrarSat() : abrirSat();
+  const abierto = document.getElementById('satmapa').classList.contains('on');
+  if(abierto && satCapaActual==='esri') cerrarSat();
+  else { abrirSat('esri'); if(satMapa) aplicarCapaSat(); }
+});
+document.getElementById('mapBtn').addEventListener('click', ()=>{
+  const abierto = document.getElementById('satmapa').classList.contains('on');
+  if(abierto && satCapaActual==='mapa') cerrarSat();   // volver al globo
+  else { abrirSat('mapa'); if(satMapa) aplicarCapaSat(); }
 });
 document.getElementById('satCerrar').addEventListener('click', cerrarSat);
 document.getElementById('satCentrar').addEventListener('click', ()=>{
@@ -1628,18 +1670,11 @@ document.getElementById('satCentrar').addEventListener('click', ()=>{
 });
 document.getElementById('satCapaBtn').addEventListener('click', ()=>{
   if(!satMapa) return;
+  const orden = ['mapa','esri','nasa'];
+  satCapaActual = orden[(orden.indexOf(satCapaActual)+1) % orden.length];
+  aplicarCapaSat();
   const st = document.getElementById('status');
-  if(satCapaActual==='esri'){
-    satMapa.removeLayer(satCapaEsri); satCapaNasa.addTo(satMapa);
-    satCapaActual='nasa';
-    st.textContent = t('capaAyer');
-  } else {
-    satMapa.removeLayer(satCapaNasa); satCapaEsri.addTo(satMapa);
-    satCapaActual='esri';
-    st.textContent = t('capaDetalle');
-  }
-  satCapaNasa.bringToBack && satMapa.hasLayer(satCapaNasa) && satCapaNasa.bringToBack();
-  satMapa.hasLayer(satCapaEsri) && satCapaEsri.bringToBack();
+  st.textContent = t(satCapaActual==='mapa' ? 'capaMapa' : satCapaActual==='esri' ? 'capaDetalle' : 'capaAyer');
   st.classList.add('on');
   setTimeout(()=>st.classList.remove('on'), 4000);
 });
@@ -2603,7 +2638,11 @@ document.getElementById('infoBtn').addEventListener('click', ()=>{
 document.getElementById('infoClose').addEventListener('click', cerrarInfo);
 (function prepararCanal(){
   const b = document.getElementById('tgBtn');
-  if(CANAL_TELEGRAM){ b.href = CANAL_TELEGRAM; }
+  if(CANAL_TELEGRAM){
+    b.href = CANAL_TELEGRAM;
+    const h = document.getElementById('tgHandle');
+    if(h) h.textContent = CANAL_TELEGRAM.replace(/^https?:\/\//,'').replace(/\/$/,'');
+  }
   else {
     // sin enlace configurado: ocultar el bloque del canal
     b.style.display = 'none';
@@ -2704,7 +2743,8 @@ const I18N = {
     pgGreen:'Sin impacto significativo esperado', pgYellow:'Impacto local posible',
     pgOrange:'Impacto regional posible', pgRed:'Impacto extenso posible',
     tuubicacion:'Tu ubicación (tiempo real)', satError:'No se pudo cargar el mapa satelital.',
-    capaDetalle:'Vista: máximo detalle', capaAyer:'Vista: imagen de ayer (NASA) — poco detalle, útil para ver nubes',
+    capaMapa:'Vista: mapa con ciudades y fronteras',
+    capaDetalle:'Vista: satélite, máximo detalle', capaAyer:'Vista: imagen de ayer (NASA) — poco detalle, útil para ver nubes',
     rMundo:'Mundo', rVen:'Venezuela', rCaribe:'Caribe', rSud:'Sudamérica',
     rNorte:'Norte y Centroamérica', rEuro:'Europa – Mediterráneo', rAsia:'Asia – Pacífico O.', rOce:'Oceanía'
   },
@@ -2798,7 +2838,8 @@ const I18N = {
     pgGreen:'No significant impact expected', pgYellow:'Local impact possible',
     pgOrange:'Regional impact possible', pgRed:'Extensive impact possible',
     tuubicacion:'Your location (live)', satError:'Could not load the satellite map.',
-    capaDetalle:'View: maximum detail', capaAyer:'View: yesterday\'s image (NASA) — low detail, good for clouds',
+    capaMapa:'View: map with cities and borders',
+    capaDetalle:'View: satellite, maximum detail', capaAyer:'View: yesterday\'s image (NASA) — low detail, good for clouds',
     rMundo:'World', rVen:'Venezuela', rCaribe:'Caribbean', rSud:'South America',
     rNorte:'North & Central America', rEuro:'Europe – Mediterranean', rAsia:'Asia – W. Pacific', rOce:'Oceania'
   }

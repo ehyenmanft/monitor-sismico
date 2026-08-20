@@ -20,6 +20,7 @@
 - **PWA instalable**: funciona como app en Android/iOS, carga instantánea, cascarón disponible sin conexión (los datos siempre vienen frescos de la red, nunca de caché).
 - **Bilingüe** español/inglés con un clic. **Modo kiosko** para pantallas de monitoreo.
 - **Avisos de tsunami y nivel PAGER** de impacto estimado (USGS), más número de reportes ciudadanos.
+- **Tres vistas**: globo 3D, mapa plano con ciudades y fronteras, e imagen satelital.
 - **Vista satelital** con seguimiento GPS en tiempo real y capa diaria de la NASA, sin claves de API.
 - **Análisis histórico** con gráficas de magnitud y frecuencia hasta 60 días o desde una fecha fija, filtrable por región.
 - **Exportación de reportes** del período y región seleccionados en CSV, TXT y GeoJSON.
