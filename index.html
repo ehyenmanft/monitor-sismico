@@ -1632,7 +1632,8 @@ function aplicarCapaSat(){
 }
 function iniciarSat(){
   if(!satMapa){
-    satMapa = L.map('satmapa', {zoomControl:false})   // se usan los botones propios.setView([10.5,-66.9], 6);
+    // zoomControl desactivado: se usan los botones propios de la columna lateral
+    satMapa = L.map('satmapa', {zoomControl:false}).setView([10.5,-66.9], 6);
     // mapa plano con nombres de ciudades, fronteras y carreteras (tema oscuro)
     satCapaMapa = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19, subdomains: 'abcd',
