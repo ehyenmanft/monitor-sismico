@@ -263,6 +263,13 @@ body.trazo .quake.tzsel{border-color:#6ad8c0;background:#16262a}
   border-radius:7px;padding:4px 9px;font-family:inherit;font-size:11px;cursor:pointer;
 }
 .hctrl button:hover{color:var(--text);border-color:var(--accent)}
+.hctrl button.icobtn{
+  display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;
+}
+.hctrl button.icobtn svg{width:16px;height:16px;display:block;color:inherit}
+#eyeFloat svg,#kioskExit svg{width:15px;height:15px;display:block;margin:auto;color:inherit}
+#mobilenav button .ico svg{width:19px;height:19px;display:block;color:inherit}
+#mobilenav button .ico{display:flex;align-items:center;justify-content:center;height:19px}
 .hctrl button.tgbtn{
   background:#2aabee;border-color:#2aabee;color:#fff;
   padding:4px 9px;display:inline-flex;align-items:center;justify-content:center;
@@ -276,7 +283,14 @@ body.trazo .quake.tzsel{border-color:#6ad8c0;background:#16262a}
   60%{box-shadow:0 0 0 9px rgba(42,171,238,0)}
   100%{box-shadow:0 0 0 0 rgba(42,171,238,0)}
 }
-@media (prefers-reduced-motion:reduce){ .hctrl button.tgbtn{animation:none} }
+@media (prefers-reduced-motion:reduce){ .hctrl button.icobtn{
+  display:inline-flex;align-items:center;justify-content:center;padding:4px 9px;
+}
+.hctrl button.icobtn svg{width:16px;height:16px;display:block;color:inherit}
+#eyeFloat svg,#kioskExit svg{width:15px;height:15px;display:block;margin:auto;color:inherit}
+#mobilenav button .ico svg{width:19px;height:19px;display:block;color:inherit}
+#mobilenav button .ico{display:flex;align-items:center;justify-content:center;height:19px}
+.hctrl button.tgbtn{animation:none} }
 #kioskExit{
   display:none;position:fixed;top:14px;right:14px;z-index:40;
   background:var(--panel);color:var(--muted);border:1px solid var(--line);
@@ -359,7 +373,8 @@ body.sinmenus #eyeFloat{display:block}
 /* mapa satelital */
 #satmapa{display:none;position:fixed;inset:0;z-index:17;background:#0b0f14}
 #satmapa.on{display:block}
-.satbtns{position:fixed;top:64px;right:14px;z-index:19;display:none;flex-direction:column;gap:8px}
+.satbtns{position:fixed;top:64px;right:352px;z-index:19;display:none;flex-direction:column;gap:8px}
+body.ocultarR .satbtns{right:14px}
 #satmapa.on ~ .satbtns{display:flex}
 .satbtns button{
   width:38px;height:38px;border-radius:9px;cursor:pointer;
@@ -372,6 +387,10 @@ body.sinmenus #eyeFloat{display:block}
   font-family:'JetBrains Mono',monospace;font-size:11px;
 }
 .leaflet-container{background:#0b0f14;font-family:'JetBrains Mono',monospace}
+.tznum{
+  color:#6ad8c0;font:700 10px 'JetBrains Mono',monospace;
+  text-align:center;line-height:16px;text-shadow:0 0 4px #0b0f14,0 0 4px #0b0f14;
+}
 
 
 /* ---------- header ---------- */
@@ -414,11 +433,11 @@ header .src a{color:var(--muted)}
   color:var(--muted);text-transform:uppercase;
   margin-bottom:12px;
 }
-#left{left:16px;top:70px;width:250px}
+#left{left:16px;top:70px;width:250px;z-index:18}
 body.ocultarL #left{display:none}
 body.ocultarR #right{display:none}
 body.ocultarT #timeline{display:none}
-#right{right:16px;top:70px;bottom:120px;width:320px;display:flex;flex-direction:column}
+#right{right:16px;top:70px;bottom:120px;width:320px;display:flex;flex-direction:column;z-index:18}
 
 /* stats */
 .stat{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line)}
@@ -475,7 +494,7 @@ body.ocultarT #timeline{display:none}
 
 /* timeline */
 #timeline{
-  position:fixed;left:16px;right:16px;bottom:14px;height:88px;z-index:15;
+  position:fixed;left:16px;right:16px;bottom:14px;height:88px;z-index:18;
   background:var(--panel);border:1px solid var(--line);border-radius:10px;
   backdrop-filter:blur(8px);padding:10px 14px 8px;
 }
@@ -581,24 +600,24 @@ body.ocultarT #timeline{display:none}
   <h1>SISMO<span>·</span>MONITOR</h1>
   <div class="hctrl">
     <button id="langBtn" title="English / Español">EN</button>
-    <button id="tzBtn" title="Modo trazo manual">✎</button>
-    <button id="pnDatos" title="Datos">▤</button>
-    <button id="pnEventos" title="Eventos">≡</button>
-    <button id="pnTl" title="Sismógrafo 24 h">∿</button>
-    <button id="eyeBtn" title="Mostrar / ocultar menús">👁</button>
+    <button id="tzBtn" class="icobtn" title="Modo trazo manual"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5 11 9.5l4 5 3.5-8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="17.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="9.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="14.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="pnDatos" class="icobtn" title="Datos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5h15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="12" width="3.2" height="5.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="10.4" y="8" width="3.2" height="9.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="14.8" y="4.5" width="3.2" height="13" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="pnEventos" class="icobtn" title="Eventos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h10M9 12h10M9 17.5h10" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.2" cy="6.5" r="1.5" fill="currentColor"/><circle cx="5.2" cy="12" r="1.5" fill="currentColor"/><circle cx="5.2" cy="17.5" r="1.5" fill="currentColor"/></svg></button>
+    <button id="pnTl" class="icobtn" title="Sismógrafo 24 h"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12h3.2l2-6 3 13 2.8-9 2 5.5 1.7-3.5h4.3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="eyeBtn" class="icobtn" title="Mostrar / ocultar menús"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button id="infoBtn" title="Canal de avisos en Telegram e información" class="tgbtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.06-.87 1.32-1.76.82l-4.86-3.58-2.35 2.26c-.26.26-.48.48-.98.48l.35-4.94L18 5.86c.39-.35-.08-.54-.6-.19L6.6 12.55l-4.79-1.5c-1.04-.33-1.06-1.04.22-1.54l18.72-7.22c.87-.32 1.63.2 1.15 2.01z"/></svg></button>
-    <button id="mapBtn" title="Vista mapa plano con ciudades">🗺</button>
-    <button id="satBtn" title="Vista satélite">🛰</button>
-    <button id="analBtn" title="Análisis">📊</button>
-    <button id="kioskBtn" title="Modo pantalla completa">⛶</button>
+    <button id="mapBtn" class="icobtn" title="Cambiar vista: globo / mapa con ciudades"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.4v1.9M12 19.7v1.9M2.4 12h1.9M19.7 12h1.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15.4 8.6 10.9 10.9 8.6 15.4 13.1 13.1z" fill="currentColor"/><circle cx="12" cy="12" r="1.15" fill="var(--panel)"/></svg></button>
+    <button id="satBtn" class="icobtn" title="Vista satélite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2 10.2 6.6M13.8 13.8l3.6-3.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="2.6" y="8.1" width="5.9" height="4.2" rx="1" transform="rotate(-45 5.5 10.2)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="15.5" y="11.7" width="5.9" height="4.2" rx="1" transform="rotate(-45 18.5 13.8)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.9 12.1 12.1 9.9l2 2-2.2 2.2z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 20.5a5 5 0 0 0-4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.6 21a9 9 0 0 0-8.6-8.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="analBtn" class="icobtn" title="Análisis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 15.5 10 10l3.5 3.5L19 5.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="13.5" cy="13.5" r="1.5" fill="currentColor"/><circle cx="19" cy="5.5" r="1.6" fill="currentColor"/></svg></button>
+    <button id="kioskBtn" class="icobtn" title="Modo pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 9V4.6a1 1 0 0 1 1-1H9M15 3.6h4.4a1 1 0 0 1 1 1V9M20.4 15v4.4a1 1 0 0 1-1 1H15M9 20.4H4.6a1 1 0 0 1-1-1V15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <div class="src">
     <span class="srcline"><span data-i18n="fuentes">Fuentes:</span> <a href="https://earthquake.usgs.gov" target="_blank">USGS</a> · <a href="http://www.funvisis.gob.ve" target="_blank">FUNVISIS</a> · <a href="https://www.seismicportal.eu" target="_blank">EMSC</a></span>
     <span class="updline"><span data-i18n="actualizacion">Última actualización:</span> <span id="updated">—</span></span>
   </div>
 </header>
-<button id="kioskExit" title="Salir de pantalla completa">✕</button>
-<button id="eyeFloat" title="Mostrar menús">👁</button>
+<button id="kioskExit" title="Salir de pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+<button id="eyeFloat" title="Mostrar menús"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 
 <div id="hint" data-i18n="hint">arrastrar · rueda = zoom · ← → ↑ ↓ rotar · + − zoom · clic en un punto</div>
 <div id="status"></div>
@@ -828,12 +847,12 @@ body.ocultarT #timeline{display:none}
 </div>
 
 <nav id="mobilenav">
-  <button id="mnGlobo" class="act"><span class="ico">◉</span><span data-i18n="navGlobo">Globo</span></button>
-  <button id="mnDatos"><span class="ico">▤</span><span data-i18n="navDatos">Datos</span></button>
-  <button id="mnEventos"><span class="ico">≡</span><span data-i18n="navEventos">Eventos</span></button>
-  <button id="mnTl"><span class="ico">∿</span>24 h</button>
-  <button id="mnAnal"><span class="ico">📊</span><span data-i18n="navAnalisis">Análisis</span></button>
-  <button id="mnTz"><span class="ico">✎</span><span data-i18n="navTrazo">Trazo</span></button>
+  <button id="mnGlobo" class="act"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="12" cy="12" rx="3.8" ry="8.8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 9.2h17M3.5 14.8h17" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span data-i18n="navGlobo">Globo</span></button>
+  <button id="mnDatos"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5h15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="12" width="3.2" height="5.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="10.4" y="8" width="3.2" height="9.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="14.8" y="4.5" width="3.2" height="13" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span data-i18n="navDatos">Datos</span></button>
+  <button id="mnEventos"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h10M9 12h10M9 17.5h10" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.2" cy="6.5" r="1.5" fill="currentColor"/><circle cx="5.2" cy="12" r="1.5" fill="currentColor"/><circle cx="5.2" cy="17.5" r="1.5" fill="currentColor"/></svg></span><span data-i18n="navEventos">Eventos</span></button>
+  <button id="mnTl"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12h3.2l2-6 3 13 2.8-9 2 5.5 1.7-3.5h4.3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>24 h</button>
+  <button id="mnAnal"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 15.5 10 10l3.5 3.5L19 5.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="13.5" cy="13.5" r="1.5" fill="currentColor"/><circle cx="19" cy="5.5" r="1.6" fill="currentColor"/></svg></span><span data-i18n="navAnalisis">Análisis</span></button>
+  <button id="mnTz"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5 11 9.5l4 5 3.5-8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="17.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="9.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="14.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span data-i18n="navTrazo">Trazo</span></button>
 </nav>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1115,7 +1134,9 @@ function cerrarPaneles(excepto){
   if(excepto!=='hojas')    cerrarHojas();
   if(excepto!=='analisis') cerrarAnalisis();
   if(excepto!=='info')     cerrarInfo();
-  if(excepto!=='sat')      cerrarSat();
+  // El mapa convive con los paneles: solo se cierra al volver al globo
+  // (botón Globo o modo trazo, que necesita el globo 3D).
+  if(excepto===undefined)  cerrarSat();
 }
 
 function alternarHoja(btnId){
@@ -1554,6 +1575,7 @@ function dibujarBarrasDia(datos, dias){
 /* ================= mapa satelital ================= */
 let satMapa=null, satCapa=null, satWatch=null, satYo=null, satYoCirc=null, leafletListo=false;
 let satCapaEsri=null, satCapaNasa=null, satCapaMapa=null, satCapaActual='mapa';
+let satPlacas=null, satTrazo=null;
 
 function cargarLeaflet(cb){
   if(leafletListo){ cb(); return; }
@@ -1612,6 +1634,31 @@ function iniciarSat(){
       attribution: 'Imagen de ' + ayer + ' © NASA EOSDIS GIBS'
     });
     satCapa = L.layerGroup().addTo(satMapa);
+
+    /* límites de placas: se parten en el antimeridiano para que ningún
+       segmento cruce el mapa de lado a lado */
+    satPlacas = L.layerGroup();
+    const tramos = [];
+    PLATES.forEach(flat=>{
+      let actual = [];
+      for(let i=0;i<flat.length;i+=2){
+        const lon = flat[i], lat = flat[i+1];
+        if(actual.length){
+          const lonPrev = actual[actual.length-1][1];
+          if(Math.abs(lon-lonPrev) > 180){        // salta el antimeridiano
+            if(actual.length>1) tramos.push(actual);
+            actual = [];
+          }
+        }
+        actual.push([lat, lon]);
+      }
+      if(actual.length>1) tramos.push(actual);
+    });
+    tramos.forEach(t=>L.polyline(t, {
+      color:'#b0603a', weight:1.4, opacity:.55, interactive:false
+    }).addTo(satPlacas));
+    if(document.getElementById('lyPlacas').checked) satPlacas.addTo(satMapa);
+    satTrazo = L.layerGroup().addTo(satMapa);
   }
   aplicarCapaSat();
   pintarSismosSat();
@@ -1621,16 +1668,48 @@ function iniciarSat(){
 function pintarSismosSat(){
   if(!satCapa) return;
   satCapa.clearLayers();
+  if(satPlacas && satMapa.hasLayer(satPlacas)) satPlacas.bringToBack();
   quakes.forEach(q=>{
     const col = '#'+magColor(q.mag).toString(16).padStart(6,'0');
-    L.circleMarker([q.lat, q.lon], {
+    const m = L.circleMarker([q.lat, q.lon], {
       radius: Math.max(4, q.mag*1.7),
       color: col, fillColor: col, fillOpacity:.45, weight:1.5
-    }).bindPopup(
-      '<b>M '+q.mag.toFixed(1)+'</b> — '+q.place+'<br>'+
-      fmtTime(q.time)+' · '+t('prof')+' '+q.depth.toFixed(0)+' km · '+q.src
-    ).addTo(satCapa);
+    }).addTo(satCapa);
+    if(tzActivo){
+      // en modo trazo, tocar un sismo lo une al recorrido en vez de abrir su ficha
+      m.on('click', ()=>tzAlternar(q));
+    } else {
+      m.bindPopup('<b>M '+q.mag.toFixed(1)+'</b> — '+q.place+'<br>'+
+        fmtTime(q.time)+' · '+t('prof')+' '+q.depth.toFixed(0)+' km · '+q.src);
+    }
   });
+  if(tzActivo) tzPintarMapa();
+}
+
+/* dibuja el trazo sobre el mapa plano, partiendo los saltos del antimeridiano */
+function tzPintarMapa(){
+  if(!satTrazo) return;
+  satTrazo.clearLayers();
+  tzSel.forEach((q,i)=>{
+    L.circleMarker([q.lat, q.lon], {
+      radius: Math.max(7, q.mag*2.1), color:'#6ad8c0', weight:2.5,
+      fill:false, interactive:false
+    }).addTo(satTrazo);
+    L.marker([q.lat, q.lon], {
+      interactive:false,
+      icon: L.divIcon({className:'tznum', html:String(i+1), iconSize:[16,16]})
+    }).addTo(satTrazo);
+    if(i>0){
+      const a = tzSel[i-1];
+      let lon2 = q.lon;
+      // tomar siempre el camino corto entre los dos puntos
+      if(Math.abs(lon2-a.lon) > 180) lon2 += (a.lon > 0 ? 360 : -360);
+      L.polyline([[a.lat, a.lon],[q.lat, lon2]], {
+        color:'#6ad8c0', weight:2, opacity:.85, interactive:false
+      }).addTo(satTrazo);
+    }
+  });
+  satTrazo.bringToFront();
 }
 function vigilarUbicacionSat(){
   if(satWatch!==null || !navigator.geolocation) return;
@@ -2205,7 +2284,7 @@ const tzMatLinea = new THREE.LineBasicMaterial({color:0x6ad8c0, transparent:true
 const tzMatAro = new THREE.MeshBasicMaterial({color:0x6ad8c0, side:THREE.DoubleSide, transparent:true, opacity:.9});
 
 function abrirTrazo(){
-  cerrarPaneles();
+  cerrarPaneles('sat');   // el trazo funciona igual sobre el globo y sobre el mapa
   tzActivo = true;
   document.body.classList.add('trazo');
   document.getElementById('tzBar').classList.add('on');
@@ -2214,10 +2293,12 @@ function abrirTrazo(){
   tzRotGuardada = VEL_ROTACION_ACTUAL;
   VEL_ROTACION_ACTUAL = 0;              // el globo se detiene; se gira arrastrando
   tzListaGuardados();
+  if(satCapa && document.getElementById('satmapa').classList.contains('on')) pintarSismosSat();
   tzActualizar();
 }
 function cerrarTrazo(){
   tzActivo = false;
+  if(satTrazo) satTrazo.clearLayers();
   if(location.hash.includes('trazo=')){
     try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
   }
@@ -2226,6 +2307,8 @@ function cerrarTrazo(){
   document.getElementById('mnTz').classList.remove('act');
   if(tzRotGuardada!==null) VEL_ROTACION_ACTUAL = tzRotGuardada;
   tzLimpiarTodo();
+  // restituir los globos informativos de los marcadores del mapa
+  if(satCapa && document.getElementById('satmapa').classList.contains('on')) pintarSismosSat();
 }
 
 /* añade o quita un sismo del trazo */
@@ -2266,6 +2349,8 @@ function tzRedibujar(){
       tzGrupo.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), tzMatLinea));
     }
   });
+  // reflejar el trazo en el mapa plano si está abierto
+  if(satTrazo && document.getElementById('satmapa').classList.contains('on')) tzPintarMapa();
   // resaltar en la lista de eventos
   document.querySelectorAll('#list .quake').forEach(el=>{
     el.classList.toggle('tzsel', tzSel.some(q=>q.id===el.dataset.id));
@@ -3094,7 +3179,13 @@ function applyFilters(){
 document.getElementById('srcUSGS').addEventListener('change', applyFilters);
 document.getElementById('srcFUN').addEventListener('change', applyFilters);
 document.getElementById('srcEMSC').addEventListener('change', applyFilters);
-document.getElementById('lyPlacas').addEventListener('change', e=>{ plateGroup.visible = e.target.checked; });
+document.getElementById('lyPlacas').addEventListener('change', e=>{
+  plateGroup.visible = e.target.checked;          // globo 3D
+  if(satMapa && satPlacas){                       // mapa plano
+    if(e.target.checked) satPlacas.addTo(satMapa);
+    else satMapa.removeLayer(satPlacas);
+  }
+});
 
 async function fetchUSGS(){
   const r = await fetch(FEED);
