@@ -1635,7 +1635,7 @@ function iniciarSat(){
     // zoomControl desactivado: se usan los botones propios de la columna lateral
     satMapa = L.map('satmapa', {zoomControl:false}).setView([10.5,-66.9], 6);
     // mapa plano con nombres de ciudades, fronteras y carreteras (tema oscuro)
-    satCapaMapa = L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/%7Bz%7D/%7Bx%7D/%7By%7D.png?key=cb1_27rd_1_c984db558a0c141d652b34c6', {
+    satCapaMapa = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19, subdomains: 'abcd',
       attribution: '© OpenStreetMap · © CARTO'
     });
