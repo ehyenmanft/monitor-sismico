@@ -252,22 +252,15 @@ body.trazo .quake.tzsel{border-color:#6ad8c0;background:#16262a}
 }
 #tgBtn:hover{background:#1f95d4}
 /* botón de cabecera ciclon monitor y modal informativo */
-.tg-wrap{position:relative;display:inline-flex;align-items:center}
-.ciclon-hdr-btn{
-  position:absolute;top:calc(100% + 5px);left:50%;transform:translateX(-50%);
-  width:28px;height:28px;padding:2px;border-radius:7px;
-  background:var(--panel);border:1px solid #1e455e;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;
-  backdrop-filter:blur(8px);box-shadow:0 4px 12px rgba(0,0,0,0.45);
-  transition:transform .15s, border-color .15s, box-shadow .15s;
-  z-index:21;
+.hctrl button.ciclon-hdr-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:4px 8px;border-color:#1e455e;
 }
-.ciclon-hdr-btn:hover{
-  border-color:#327ca8;transform:translateX(-50%) translateY(1px);
-  box-shadow:0 0 10px rgba(50,124,168,0.6);
+.hctrl button.ciclon-hdr-btn:hover{
+  border-color:#327ca8;
+  box-shadow:0 0 10px rgba(50,124,168,0.5);
 }
-.ciclon-hdr-btn img{width:20px;height:20px;border-radius:50%;display:block}
-body.sinmenus .ciclon-hdr-btn, body.kiosko .ciclon-hdr-btn{display:none !important}
+.ciclon-hdr-btn img{width:16px;height:16px;border-radius:50%;display:block}
 
 #ciclonModal{
   position:fixed;left:50%;top:74px;transform:translateX(-50%);z-index:36;
@@ -728,10 +721,8 @@ body.ocultarT #timeline{display:none}
     <button id="pnEventos" class="icobtn" title="Eventos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h10M9 12h10M9 17.5h10" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.2" cy="6.5" r="1.5" fill="currentColor"/><circle cx="5.2" cy="12" r="1.5" fill="currentColor"/><circle cx="5.2" cy="17.5" r="1.5" fill="currentColor"/></svg></button>
     <button id="pnTl" class="icobtn" title="Sismógrafo 24 h"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12h3.2l2-6 3 13 2.8-9 2 5.5 1.7-3.5h4.3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button id="eyeBtn" class="icobtn" title="Mostrar / ocultar menús"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <div class="tg-wrap">
-      <button id="infoBtn" title="Canal de avisos en Telegram e información" class="tgbtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.06-.87 1.32-1.76.82l-4.86-3.58-2.35 2.26c-.26.26-.48.48-.98.48l.35-4.94L18 5.86c.39-.35-.08-.54-.6-.19L6.6 12.55l-4.79-1.5c-1.04-.33-1.06-1.04.22-1.54l18.72-7.22c.87-.32 1.63.2 1.15 2.01z"/></svg></button>
-      <button id="ciclonHdrBtn" title="CICLÓN·MONITOR — Ciclones tropicales y clima" class="ciclon-hdr-btn"><img src="icon-ciclon.png" alt="CICLÓN·MONITOR"></button>
-    </div>
+    <button id="infoBtn" title="Canal de avisos en Telegram e información" class="tgbtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.06-.87 1.32-1.76.82l-4.86-3.58-2.35 2.26c-.26.26-.48.48-.98.48l.35-4.94L18 5.86c.39-.35-.08-.54-.6-.19L6.6 12.55l-4.79-1.5c-1.04-.33-1.06-1.04.22-1.54l18.72-7.22c.87-.32 1.63.2 1.15 2.01z"/></svg></button>
+    <button id="ciclonHdrBtn" title="CICLÓN·MONITOR — Ciclones tropicales y clima" class="icobtn ciclon-hdr-btn"><img src="icon-ciclon.png" alt="CICLÓN·MONITOR"></button>
     <button id="mapBtn" class="icobtn" title="Cambiar vista: globo / mapa con ciudades"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.4v1.9M12 19.7v1.9M2.4 12h1.9M19.7 12h1.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15.4 8.6 10.9 10.9 8.6 15.4 13.1 13.1z" fill="currentColor"/><circle cx="12" cy="12" r="1.15" fill="var(--panel)"/></svg></button>
     <button id="satBtn" class="icobtn" title="Vista satélite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2 10.2 6.6M13.8 13.8l3.6-3.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="2.6" y="8.1" width="5.9" height="4.2" rx="1" transform="rotate(-45 5.5 10.2)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="15.5" y="11.7" width="5.9" height="4.2" rx="1" transform="rotate(-45 18.5 13.8)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.9 12.1 12.1 9.9l2 2-2.2 2.2z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 20.5a5 5 0 0 0-4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.6 21a9 9 0 0 0-8.6-8.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button id="analBtn" class="icobtn" title="Análisis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 15.5 10 10l3.5 3.5L19 5.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="13.5" cy="13.5" r="1.5" fill="currentColor"/><circle cx="19" cy="5.5" r="1.6" fill="currentColor"/></svg></button>
