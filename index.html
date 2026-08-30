@@ -1218,6 +1218,7 @@ const pointers = new Map();   // punteros activos (dedos o mouse)
 let pinchDist = 0;
 
 canvas.addEventListener('pointerdown', e=>{
+  flyTarget = null;   // permite manipular y rotar el globo libremente sin quedar anclado
   pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
   canvas.setPointerCapture(e.pointerId);
   if(pointers.size===1){
@@ -1261,10 +1262,12 @@ canvas.addEventListener('pointermove', e=>{
 });
 canvas.addEventListener('wheel', e=>{
   e.preventDefault();   // solo sobre el globo: las listas conservan su desplazamiento
+  flyTarget = null;
   targetDist = Math.max(140, Math.min(650, targetDist + e.deltaY*0.4));
 },{passive:false});
 
 addEventListener('keydown', e=>{
+  flyTarget = null;
   const step=0.06;
   if(e.key==='ArrowLeft') rotY-=step;
   else if(e.key==='ArrowRight') rotY+=step;
@@ -1309,7 +1312,10 @@ const esMovilTactil = ()=>matchMedia('(pointer:coarse)').matches;
 canvas.addEventListener('click', e=>{
   if(downAt && Math.hypot(e.clientX-downAt[0], e.clientY-downAt[1])>10) return; // fue drag
   const q = marcadorEn(e.clientX, e.clientY);
-  if(!q) return;
+  if(!q){
+    cerrarDetail();   // clic en área libre cierra la tarjeta y libera el globo
+    return;
+  }
   if(tzActivo){ tzAlternar(q); return; }   // en modo trazo, el clic conecta puntos
   selectQuake(q, true);
 });
@@ -1331,6 +1337,16 @@ function fmtTime(ms){
 const esMovil = ()=>matchMedia('(max-width:820px)').matches;
 const hojas = { mnDatos:'left', mnEventos:'right', mnTl:'timeline' };
 
+function cerrarDetail(){
+  const det = document.getElementById('detail');
+  if(det) det.classList.remove('on');
+  selectedId = null;
+  selectedQ = null;
+  flyTarget = null;   // desancla la cámara para permitir rotar y manipular el globo libremente
+  try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+  document.querySelectorAll('.quake.sel').forEach(el=>el.classList.remove('sel'));
+}
+
 function cerrarHojas(){
   ['left','right','timeline'].forEach(id=>document.getElementById(id).classList.remove('open'));
   document.querySelectorAll('#mobilenav button').forEach(b=>b.classList.remove('act'));
@@ -1339,6 +1355,7 @@ function cerrarHojas(){
 /* Cierra todos los paneles salvo el indicado. Evita que queden dos
    superpuestos al saltar entre opciones del menú superior o inferior. */
 function cerrarPaneles(excepto){
+  if(excepto!=='detail')   cerrarDetail();
   if(excepto!=='hojas')    cerrarHojas();
   if(excepto!=='analisis') cerrarAnalisis();
   if(excepto!=='info')     cerrarInfo();
@@ -1472,12 +1489,7 @@ function autoAjustarSatBtns(){
 }
 window.addEventListener('resize', ()=>{ autoAjustarDetail(); autoAjustarSatBtns(); });
 
-document.getElementById('dclose').onclick = ()=>{
-  document.getElementById('detail').classList.remove('on');
-  selectedId=null;
-  try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
-  document.querySelectorAll('.quake.sel').forEach(el=>el.classList.remove('sel'));
-};
+document.getElementById('dclose').onclick = cerrarDetail;
 document.getElementById('btnScrollTop')?.addEventListener('click', (e)=>{
   e.stopPropagation();
   const lst = document.getElementById('list');
@@ -3304,6 +3316,7 @@ document.getElementById('eyeBtn').addEventListener('click', ()=>alternarMenus())
         alternarHoja(id==='left'?'mnDatos':id==='right'?'mnEventos':'mnTl');
         return;
       }
+      cerrarDetail();
       document.body.classList.toggle(cls);
       document.getElementById(btn).style.color =
         document.body.classList.contains(cls) ? 'var(--muted)' : 'var(--accent)';
