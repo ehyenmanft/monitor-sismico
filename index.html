@@ -1035,32 +1035,41 @@ function clearMarkers(){
   markers = [];
 }
 
-function crearSpriteMagnitud(mag, colHex){
+function crearIndicadorGlobo(mag, colHex){
   const c = document.createElement('canvas');
-  c.width = 112;
-  c.height = 40;
+  c.width = 64;
+  c.height = 64;
   const ctx = c.getContext('2d');
   
-  ctx.fillStyle = 'rgba(11, 15, 20, 0.88)';
-  ctx.strokeStyle = colHex;
-  ctx.lineWidth = 2.5;
+  // Sombra suave para contraste
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 4;
+  
+  // Círculo indicador con el color del sismo
+  ctx.fillStyle = colHex;
   ctx.beginPath();
-  if(ctx.roundRect) ctx.roundRect(4, 4, 104, 32, 7);
-  else ctx.rect(4, 4, 104, 32);
+  ctx.arc(32, 32, 25, 0, Math.PI*2);
   ctx.fill();
+  
+  // Borde blanco
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.lineWidth = 2.5;
   ctx.stroke();
   
+  // Número de magnitud en blanco
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px "JetBrains Mono", monospace';
+  ctx.font = 'bold 22px "JetBrains Mono", monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('M ' + mag.toFixed(1), 56, 20);
+  ctx.fillText(mag.toFixed(1), 32, 33);
   
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
   const mat = new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: true});
   const sp = new THREE.Sprite(mat);
-  sp.scale.set(5.5, 2.0, 1);
+  const s = Math.max(2.4, Math.min(3.8, 1.8 + mag * 0.4));
+  sp.scale.set(s, s, 1);
   return sp;
 }
 
@@ -1068,6 +1077,7 @@ function addMarkers(quakes){
   clearMarkers();
   quakes.forEach(q=>{
     const col = magColor(q.mag);
+    const colHex = '#' + col.toString(16).padStart(6, '0');
     const size = Math.max(0.7, q.mag*0.55);
     const mesh = new THREE.Mesh(
       new THREE.SphereGeometry(size, 12, 12),
@@ -1077,10 +1087,9 @@ function addMarkers(quakes){
     mesh.userData.quake = q;
     markerGroup.add(mesh);
 
-    // etiqueta preview con la magnitud sobre el sismo
-    const colHex = '#' + col.toString(16).padStart(6, '0');
-    const sprite = crearSpriteMagnitud(q.mag, colHex);
-    sprite.position.copy(latLonToV3(q.lat, q.lon, R*1.018 + size*0.5));
+    // Indicador de ubicación con magnitud en número blanco
+    const sprite = crearIndicadorGlobo(q.mag, colHex);
+    sprite.position.copy(latLonToV3(q.lat, q.lon, R*1.01 + size*0.4));
     sprite.userData.quake = q;
     markerGroup.add(sprite);
 
@@ -1182,23 +1191,20 @@ canvas.addEventListener('pointerdown', e=>{ downAt=[e.clientX,e.clientY]; });
 function marcadorEn(clientX, clientY){
   mouse.x = (clientX/innerWidth)*2-1;
   mouse.y = -(clientY/innerHeight)*2+1;
-  const allMeshes = [];
-  markers.forEach(m=>{
-    if(m.mesh) allMeshes.push(m.mesh);
-    if(m.sprite) allMeshes.push(m.sprite);
-  });
-  const hits = ray.intersectObjects(allMeshes);
-  if(hits.length) return hits[0].object.userData.quake;
+  ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(markers.map(m=>m.mesh).filter(Boolean));
+  if(hits.length && hits[0].object.userData.quake) return hits[0].object.userData.quake;
 
-  // el dedo no acierta puntos de pocos píxeles: buscar el marcador
+  // el dedo o mouse no siempre acierta el centro exacto: buscar el marcador
   // visible más cercano dentro de un radio de pantalla
-  const RADIO = esMovilTactil() ? 30 : 14; // px
+  const RADIO = esMovilTactil() ? 32 : 18; // px
   const camDir = camera.position.clone().normalize();
   const v = new THREE.Vector3();
   let mejor=null, mejorD=RADIO;
   markers.forEach(m=>{
+    if(!m.mesh) return;
     m.mesh.getWorldPosition(v);
-    if(v.clone().normalize().dot(camDir) < 0.15) return; // está en la cara oculta del globo
+    if(v.clone().normalize().dot(camDir) < 0.12) return; // está en la cara oculta del globo
     const p = v.clone().project(camera);
     const sx = ( p.x+1)/2*innerWidth;
     const sy = (-p.y+1)/2*innerHeight;
