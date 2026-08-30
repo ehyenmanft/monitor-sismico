@@ -377,8 +377,8 @@ body.sinmenus #eyeFloat{display:block}
 /* mapa satelital */
 #satmapa{display:none;position:fixed;inset:0;z-index:17;background:#0b0f14}
 #satmapa.on{display:block}
-.satbtns{position:fixed;top:64px;right:352px;z-index:19;display:none;flex-direction:column;gap:8px}
-body.ocultarR .satbtns{right:14px}
+.satbtns{position:fixed;top:64px;right:352px;z-index:24;display:none;flex-direction:column;gap:8px;transition:right .2s ease}
+body.ocultarR .satbtns{right:14px !important}
 #satmapa.on ~ .satbtns{display:flex}
 .satbtns button{
   width:38px;height:38px;border-radius:9px;cursor:pointer;
@@ -534,12 +534,18 @@ body.ocultarT #timeline{display:none}
 
 /* detail card */
 #detail{
-  left:50%;bottom:118px;transform:translateX(-50%);
-  min-width:340px;max-width:460px;display:none;z-index:36;
+  left:50%;bottom:24px;transform:translateX(-50%);
+  min-width:320px;max-width:min(440px, 94vw);display:none;z-index:36;
   background:rgba(14,20,27,0.96);
   backdrop-filter:blur(14px);
-  box-shadow:0 12px 36px rgba(0,0,0,0.7), 0 0 0 1px var(--line);
+  box-shadow:0 12px 36px rgba(0,0,0,0.75), 0 0 0 1px var(--line);
+  max-height:calc(100vh - 100px);
+  overflow-y:auto;
+  transition:bottom .2s ease, top .2s ease;
 }
+#detail.movido, #detail.arrastrando{transition:none}
+#detail::-webkit-scrollbar{width:5px}
+#detail::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
 #detail.on{display:block}
 #detail .drow{display:flex;justify-content:space-between;gap:20px;padding:4px 0;font-size:12px}
 #detail .drow .k{color:var(--muted)}
@@ -548,7 +554,7 @@ body.ocultarT #timeline{display:none}
   position:absolute;top:8px;right:10px;background:none;border:none;
   color:var(--muted);cursor:pointer;font-size:14px;font-family:inherit;
 }
-#dmagbig{font-family:'Archivo',sans-serif;font-size:34px;font-weight:800;line-height:1;margin-bottom:8px}
+#dmagbig{font-family:'Archivo',sans-serif;font-size:34px;font-weight:800;line-height:1;margin-bottom:8px;cursor:move;user-select:none}
 #dmagbig small{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.1em}
 
 /* timeline */
@@ -586,6 +592,7 @@ body.ocultarT #timeline{display:none}
 @media (max-width:1000px) and (min-width:821px){
   #left{display:none}
   #right{width:260px}
+  .satbtns{right:288px}
 }
 
 /* ---------- móvil ---------- */
@@ -628,6 +635,7 @@ body.ocultarT #timeline{display:none}
     background:rgba(14,20,27,0.97);
     box-shadow:0 12px 36px rgba(0,0,0,0.8), 0 0 0 1px var(--line);
   }
+  .satbtns{top:64px;right:12px !important;z-index:24}
 
   /* barra de navegación inferior */
   #mobilenav{
@@ -1310,9 +1318,76 @@ function selectQuake(q, fly){
   document.getElementById('detail').classList.add('on');
   try{ history.replaceState(null,'','#evento='+encodeURIComponent(q.id)); }catch(e){}
   if(esMovil()) cerrarHojas();
+  autoAjustarDetail();
   if(satMapa && document.getElementById('satmapa').classList.contains('on')){ satMapa.setView([q.lat,q.lon], 9); }
   if(fly!==false) flyTo(q.lat, q.lon);
 }
+
+function autoAjustarDetail(){
+  const det = document.getElementById('detail');
+  if(!det || !det.classList.contains('on')) return;
+  if(esMovil()){
+    det.style.left = '8px';
+    det.style.right = '8px';
+    det.style.bottom = '64px';
+    det.style.top = 'auto';
+    det.style.transform = 'none';
+    det.style.maxHeight = 'calc(100vh - 128px)';
+    return;
+  }
+  if(det.classList.contains('movido')) return;
+
+  const tzBar = document.getElementById('tzBar');
+  const tl = document.getElementById('timeline');
+  let botPx = 24;
+
+  if(tzActivo && tzBar && tzBar.classList.contains('on')){
+    const r = tzBar.getBoundingClientRect();
+    botPx = Math.max(24, Math.round(innerHeight - r.top + 14));
+  } else if(tl && tl.classList.contains('open')){
+    const r = tl.getBoundingClientRect();
+    botPx = Math.max(24, Math.round(innerHeight - r.top + 14));
+  }
+
+  const detHeight = det.offsetHeight || 310;
+  if(botPx + detHeight > innerHeight - 74){
+    det.style.bottom = 'auto';
+    det.style.top = '76px';
+  } else {
+    det.style.top = 'auto';
+    det.style.bottom = botPx + 'px';
+  }
+  det.style.left = '50%';
+  det.style.right = 'auto';
+  det.style.transform = 'translateX(-50%)';
+  det.style.maxHeight = Math.max(200, innerHeight - 90) + 'px';
+}
+function autoAjustarSatBtns(){
+  const btns = document.querySelector('.satbtns');
+  if(!btns) return;
+  if(esMovil()){
+    btns.style.right = '12px';
+    return;
+  }
+  if(document.body.classList.contains('ocultarR') || document.body.classList.contains('sinmenus')){
+    btns.style.right = '14px';
+    return;
+  }
+  const rPanel = document.getElementById('right');
+  if(!rPanel || rPanel.classList.contains('movido') || getComputedStyle(rPanel).display === 'none'){
+    btns.style.right = '14px';
+    return;
+  }
+  const rRect = rPanel.getBoundingClientRect();
+  if(rRect.right > innerWidth - 60 && rRect.left > 0){
+    const rightOffset = Math.max(14, Math.round(innerWidth - rRect.left + 12));
+    btns.style.right = rightOffset + 'px';
+  } else {
+    btns.style.right = '14px';
+  }
+}
+window.addEventListener('resize', ()=>{ autoAjustarDetail(); autoAjustarSatBtns(); });
+
 document.getElementById('dclose').onclick = ()=>{
   document.getElementById('detail').classList.remove('on');
   selectedId=null;
@@ -1793,7 +1868,8 @@ function iniciarSat(){
   aplicarCapaSat();
   pintarSismosSat();
   vigilarUbicacionSat();
-  setTimeout(()=>satMapa.invalidateSize(), 120);
+  autoAjustarSatBtns();
+  setTimeout(()=>{ if(satMapa) satMapa.invalidateSize(); autoAjustarSatBtns(); }, 120);
 }
 function pintarSismosSat(){
   if(!satCapa) return;
@@ -2536,6 +2612,7 @@ document.getElementById('tzToggleList').addEventListener('click', e=>{
   const l = document.getElementById('tzLista');
   l.classList.toggle('on');
   e.target.textContent = l.classList.contains('on') ? t('tzOcultarLista') : t('tzVerLista');
+  setTimeout(autoAjustarDetail, 60);
 });
 document.getElementById('tzShare').addEventListener('click', async e=>{
   if(!tzSel.length) return;
@@ -2749,26 +2826,31 @@ function hacerArrastrable(id, asa){
     try{ localStorage.setItem(POS_KEY, JSON.stringify(posGuardadas)); }catch(e){}
     document.getElementById('resetPos').classList.add('on');
     if(id==='timeline') renderTimeline();
+    if(id==='right') autoAjustarSatBtns();
   };
   h.addEventListener('pointerup', soltar);
   h.addEventListener('pointercancel', soltar);
 }
 
-['left','right','timeline','analisis','info'].forEach(id=>{
-  hacerArrastrable(id, 'h2');
+['left','right','timeline','analisis','info','detail'].forEach(id=>{
+  const asa = id==='detail' ? '#dmagbig' : 'h2';
+  hacerArrastrable(id, asa);
   aplicarPos(id);
 });
 
 document.getElementById('resetPos').addEventListener('click', ()=>{
   posGuardadas = {};
   try{ localStorage.removeItem(POS_KEY); }catch(e){}
-  ['left','right','timeline','analisis','info'].forEach(id=>{
+  ['left','right','timeline','analisis','info','detail'].forEach(id=>{
     const el = document.getElementById(id);
+    if(!el) return;
     el.classList.remove('movido');
     el.style.left=el.style.top=el.style.right=el.style.bottom=el.style.transform=el.style.maxHeight='';
   });
   document.getElementById('resetPos').classList.remove('on');
   renderTimeline();
+  autoAjustarDetail();
+  autoAjustarSatBtns();
 });
 
 /* ================= bienvenida (onboarding) ================= */
