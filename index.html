@@ -422,8 +422,15 @@ body.sinmenus #eyeFloat{display:block}
 
 
 /* mapa satelital */
-#satmapa{display:none;position:fixed;inset:0;z-index:17;background:#0b0f14}
-#satmapa.on{display:block}
+#satmapa{
+  position:fixed;inset:0;z-index:17;background:#0b0f14;
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .15s ease;
+  will-change:opacity;
+}
+#satmapa.on{
+  opacity:1;visibility:visible;pointer-events:auto;
+}
 .satbtns{position:fixed;top:64px;right:352px;z-index:24;display:none;flex-direction:column;gap:8px;transition:right .2s ease}
 body.ocultarR .satbtns{right:14px !important}
 #satmapa.on ~ .satbtns{display:flex}
@@ -1111,7 +1118,13 @@ function clearMarkers(){
   markers = [];
 }
 
-function crearIndicadorGlobo(mag, colHex){
+const indicadorTextureCache = new Map();
+const spriteMatCache = new Map();
+
+function obtenerTexturaIndicador(mag, colHex){
+  const clave = mag.toFixed(1) + '_' + colHex;
+  if(indicadorTextureCache.has(clave)) return indicadorTextureCache.get(clave);
+
   const c = document.createElement('canvas');
   c.width = 64;
   c.height = 64;
@@ -1142,7 +1155,18 @@ function crearIndicadorGlobo(mag, colHex){
   
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
-  const mat = new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: true});
+  indicadorTextureCache.set(clave, tex);
+  return tex;
+}
+
+function crearIndicadorGlobo(mag, colHex){
+  const clave = mag.toFixed(1) + '_' + colHex;
+  let mat = spriteMatCache.get(clave);
+  if(!mat){
+    const tex = obtenerTexturaIndicador(mag, colHex);
+    mat = new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: true});
+    spriteMatCache.set(clave, mat);
+  }
   const sp = new THREE.Sprite(mat);
   const s = Math.max(2.4, Math.min(3.8, 1.8 + mag * 0.4));
   sp.scale.set(s, s, 1);
@@ -1882,7 +1906,7 @@ function aplicarCapaSat(){
 function iniciarSat(){
   if(!satMapa){
     // zoomControl desactivado: se usan los botones propios de la columna lateral
-    satMapa = L.map('satmapa', {zoomControl:false}).setView([10.5,-66.9], 6);
+    satMapa = L.map('satmapa', {zoomControl:false, preferCanvas:true}).setView([10.5,-66.9], 6);
     // mapa plano con nombres de ciudades, fronteras y carreteras (Carto Dark Matter)
     satCapaMapa = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=cb1_27rd_1_c984db558a0c141d652b34c6', {
       maxZoom: 19, subdomains: 'abcd',
@@ -1938,7 +1962,7 @@ function iniciarSat(){
   pintarSismosSat();
   vigilarUbicacionSat();
   autoAjustarSatBtns();
-  setTimeout(()=>{ if(satMapa) satMapa.invalidateSize(); autoAjustarSatBtns(); }, 120);
+  requestAnimationFrame(()=>{ if(satMapa) satMapa.invalidateSize(); autoAjustarSatBtns(); });
 }
 function pintarSismosSat(){
   if(!satCapa) return;
@@ -2014,6 +2038,7 @@ function cerrarSat(){
   if(!el) return;
   el.classList.remove('on');
   if(satWatch!==null){ navigator.geolocation.clearWatch(satWatch); satWatch=null; }
+  if(typeof clock !== 'undefined') animate._t = clock.getElapsedTime();
 }
 document.getElementById('satBtn').addEventListener('click', ()=>{
   const abierto = document.getElementById('satmapa').classList.contains('on');
@@ -3723,6 +3748,13 @@ function animate(){
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
 
+  const satMapaEl = document.getElementById('satmapa');
+  if(satMapaEl && satMapaEl.classList.contains('on')){
+    animate._t = t;
+    animate._trp = t;
+    return; // Pausa el render 3D mientras el usuario navega en mapa 2D o satélite
+  }
+
   if(flyTarget){
     rotY += (flyTarget.rotY-rotY)*0.08;
     rotX += (flyTarget.rotX-rotX)*0.08;
@@ -3767,6 +3799,13 @@ animate();
 
 fetchQuakes();
 setInterval(fetchQuakes, REFRESH_MS);
+
+// Precarga silenciosa de Leaflet para alternancia instantánea sin espera de red
+if('requestIdleCallback' in window){
+  requestIdleCallback(()=>cargarLeaflet(()=>{}));
+} else {
+  setTimeout(()=>cargarLeaflet(()=>{}), 1500);
+}
 
 /* ================= PWA ================= */
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
