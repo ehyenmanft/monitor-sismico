@@ -468,6 +468,31 @@ body.ocultarL #left{display:none}
 body.ocultarR #right{display:none}
 body.ocultarT #timeline{display:none}
 #right{right:16px;top:70px;bottom:120px;width:320px;display:flex;flex-direction:column;z-index:18}
+#right h2{display:flex;align-items:center;justify-content:space-between}
+.rh-title{display:inline-flex;align-items:center;gap:7px}
+.btn-scroll-top{
+  background:rgba(240,127,60,0.15);
+  border:1px solid rgba(240,127,60,0.45);
+  color:#f07f3c;
+  border-radius:5px;
+  width:20px;
+  height:20px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:background .15s,border-color .15s,transform .15s,box-shadow .15s;
+}
+.btn-scroll-top svg{width:12px;height:12px;display:block}
+.btn-scroll-top:hover{
+  background:#f07f3c;
+  color:#0b0f14;
+  border-color:#f07f3c;
+  transform:translateY(-1px);
+  box-shadow:0 0 8px rgba(240,127,60,0.5);
+}
+.btn-scroll-top:active{transform:translateY(0)}
 
 /* stats */
 .stat{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--line)}
@@ -510,7 +535,10 @@ body.ocultarT #timeline{display:none}
 /* detail card */
 #detail{
   left:50%;bottom:118px;transform:translateX(-50%);
-  min-width:340px;max-width:460px;display:none;z-index:18;
+  min-width:340px;max-width:460px;display:none;z-index:36;
+  background:rgba(14,20,27,0.96);
+  backdrop-filter:blur(14px);
+  box-shadow:0 12px 36px rgba(0,0,0,0.7), 0 0 0 1px var(--line);
 }
 #detail.on{display:block}
 #detail .drow{display:flex;justify-content:space-between;gap:20px;padding:4px 0;font-size:12px}
@@ -596,7 +624,9 @@ body.ocultarT #timeline{display:none}
 
   #detail{
     left:8px;right:8px;bottom:64px;transform:none;
-    min-width:0;max-width:none;z-index:23;
+    min-width:0;max-width:none;z-index:36;
+    background:rgba(14,20,27,0.97);
+    box-shadow:0 12px 36px rgba(0,0,0,0.8), 0 0 0 1px var(--line);
   }
 
   /* barra de navegación inferior */
@@ -718,7 +748,15 @@ body.ocultarT #timeline{display:none}
 </aside>
 
 <aside class="panel" id="right">
-  <h2><span data-i18n="recientes">Eventos recientes</span> <span id="listCount" style="float:right;color:var(--text)"></span></h2>
+  <h2>
+    <span class="rh-title">
+      <span data-i18n="recientes">Eventos recientes</span>
+      <button id="btnScrollTop" class="btn-scroll-top" title="Subir al primer evento" aria-label="Subir al primer evento">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </span>
+    <span id="listCount" style="float:right;color:var(--text)"></span>
+  </h2>
   <div id="list"></div>
 </aside>
 
@@ -1275,6 +1313,11 @@ document.getElementById('dclose').onclick = ()=>{
   try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
   document.querySelectorAll('.quake.sel').forEach(el=>el.classList.remove('sel'));
 };
+document.getElementById('btnScrollTop')?.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const lst = document.getElementById('list');
+  if(lst) lst.scrollTo({top:0, behavior:'smooth'});
+});
 
 /* ================= compartir y enlaces profundos ================= */
 function urlEvento(q){
