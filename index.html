@@ -405,6 +405,22 @@ body.kiosko .leaflet-bottom.leaflet-right{bottom:0}
   color:#6ad8c0;font:700 10px 'JetBrains Mono',monospace;
   text-align:center;line-height:16px;text-shadow:0 0 4px #0b0f14,0 0 4px #0b0f14;
 }
+.leaflet-tooltip.quake-mag-badge{
+  background:rgba(11,15,20,0.92);
+  color:#ffffff;
+  border:1px solid rgba(255,255,255,0.18);
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;
+  font-weight:700;
+  padding:1px 5px;
+  border-radius:4px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.6);
+  pointer-events:none;
+  white-space:nowrap;
+}
+.leaflet-tooltip.quake-mag-badge::before{
+  border-top-color:rgba(11,15,20,0.92);
+}
 
 
 /* ---------- header ---------- */
@@ -981,6 +997,35 @@ function clearMarkers(){
   markers = [];
 }
 
+function crearSpriteMagnitud(mag, colHex){
+  const c = document.createElement('canvas');
+  c.width = 112;
+  c.height = 40;
+  const ctx = c.getContext('2d');
+  
+  ctx.fillStyle = 'rgba(11, 15, 20, 0.88)';
+  ctx.strokeStyle = colHex;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(4, 4, 104, 32, 7);
+  else ctx.rect(4, 4, 104, 32);
+  ctx.fill();
+  ctx.stroke();
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 18px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('M ' + mag.toFixed(1), 56, 20);
+  
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.SpriteMaterial({map: tex, transparent: true, depthTest: true});
+  const sp = new THREE.Sprite(mat);
+  sp.scale.set(5.5, 2.0, 1);
+  return sp;
+}
+
 function addMarkers(quakes){
   clearMarkers();
   quakes.forEach(q=>{
@@ -993,6 +1038,13 @@ function addMarkers(quakes){
     mesh.position.copy(latLonToV3(q.lat, q.lon, R*1.004));
     mesh.userData.quake = q;
     markerGroup.add(mesh);
+
+    // etiqueta preview con la magnitud sobre el sismo
+    const colHex = '#' + col.toString(16).padStart(6, '0');
+    const sprite = crearSpriteMagnitud(q.mag, colHex);
+    sprite.position.copy(latLonToV3(q.lat, q.lon, R*1.018 + size*0.5));
+    sprite.userData.quake = q;
+    markerGroup.add(sprite);
 
     // anillo de profundidad: gris = intermedio (70–300 km), azul = profundo (>300 km)
     const dcol = q.depth > 300 ? 0x6a7dd8 : q.depth >= 70 ? 0x8fa3b8 : null;
@@ -1016,7 +1068,7 @@ function addMarkers(quakes){
       ring.lookAt(0,0,0);
       markerGroup.add(ring);
     }
-    markers.push({mesh, ring, quake:q, base:size});
+    markers.push({mesh, ring, sprite, quake:q, base:size});
   });
 }
 
@@ -1092,8 +1144,12 @@ canvas.addEventListener('pointerdown', e=>{ downAt=[e.clientX,e.clientY]; });
 function marcadorEn(clientX, clientY){
   mouse.x = (clientX/innerWidth)*2-1;
   mouse.y = -(clientY/innerHeight)*2+1;
-  ray.setFromCamera(mouse, camera);
-  const hits = ray.intersectObjects(markers.map(m=>m.mesh));
+  const allMeshes = [];
+  markers.forEach(m=>{
+    if(m.mesh) allMeshes.push(m.mesh);
+    if(m.sprite) allMeshes.push(m.sprite);
+  });
+  const hits = ray.intersectObjects(allMeshes);
   if(hits.length) return hits[0].object.userData.quake;
 
   // el dedo no acierta puntos de pocos píxeles: buscar el marcador
@@ -1634,8 +1690,8 @@ function iniciarSat(){
   if(!satMapa){
     // zoomControl desactivado: se usan los botones propios de la columna lateral
     satMapa = L.map('satmapa', {zoomControl:false}).setView([10.5,-66.9], 6);
-    // mapa plano con nombres de ciudades, fronteras y carreteras (Carto Voyager)
-    satCapaMapa = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?key=cb1_27rd_1_c984db558a0c141d652b34c6', {
+    // mapa plano con nombres de ciudades, fronteras y carreteras (Carto Dark Matter)
+    satCapaMapa = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png?key=cb1_27rd_1_c984db558a0c141d652b34c6', {
       maxZoom: 19, subdomains: 'abcd',
       attribution: '© OpenStreetMap · © CARTO'
     });
@@ -1695,11 +1751,19 @@ function pintarSismosSat(){
   satCapa.clearLayers();
   quakes.forEach(q=>{
     const col = '#'+magColor(q.mag).toString(16).padStart(6,'0');
+    const rad = Math.max(5, q.mag*1.9);
     const m = L.circleMarker([q.lat, q.lon], {
-      radius: Math.max(5, q.mag*1.9),
+      radius: rad,
       color: col, fillColor: col, fillOpacity:.72, weight:2,
       opacity:1, pane:'paneSismos'
     }).addTo(satCapa);
+    // indicador preview sobre el marcador con su magnitud
+    m.bindTooltip(`<span style="color:${col}; font-weight:800; margin-right:2px">M</span><span>${q.mag.toFixed(1)}</span>`, {
+      permanent: true,
+      direction: 'top',
+      offset: [0, -rad - 2],
+      className: 'quake-mag-badge'
+    });
     if(tzActivo){
       // en modo trazo, tocar un sismo lo une al recorrido en vez de abrir su ficha
       m.on('click', ()=>tzAlternar(q));
