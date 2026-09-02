@@ -518,28 +518,165 @@ body.kiosko .leaflet-bottom.leaflet-right{bottom:0}
 
 /* ---------- header ---------- */
 header{
-  position:fixed;top:0;left:0;right:0;z-index:20;
-  display:flex;align-items:center;gap:14px;
-  padding:12px 18px;
-  background:linear-gradient(to bottom,rgba(11,15,20,.92),rgba(11,15,20,0));
+  position:fixed;top:0;left:0;right:0;z-index:30;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 18px;
+  background:linear-gradient(to bottom,rgba(11,15,20,.95) 60%,rgba(11,15,20,0));
   pointer-events:none;
 }
-header .dot{
+.brand{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  padding:4px 8px 4px 4px;border-radius:8px;pointer-events:auto;
+  transition:all .18s ease;user-select:none;
+}
+.brand:hover{background:rgba(255,255,255,0.08);transform:translateY(-1px)}
+.brand:active{transform:translateY(0)}
+.brand .dot{
   width:9px;height:9px;border-radius:50%;
   background:var(--m4);
   animation:blink 1.6s infinite;
   flex:none;
 }
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-header h1{
+.brand h1{
   font-family:'Archivo',system-ui,sans-serif;
-  font-size:17px;font-weight:800;letter-spacing:.14em;
+  font-size:16px;font-weight:800;letter-spacing:.12em;margin:0;line-height:1;
 }
-header h1 span{color:var(--accent)}
-header .src{margin-left:auto;color:var(--muted);font-size:11px;text-align:right;pointer-events:auto}
+.brand h1 span{color:var(--accent)}
+.ver-pill{
+  font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:800;
+  color:var(--accent);background:rgba(240,127,60,0.14);
+  border:1px solid rgba(240,127,60,0.45);padding:2px 5px;border-radius:4px;
+  letter-spacing:0.04em;line-height:1;
+}
+
+header .hctrl{
+  display:flex;align-items:center;gap:6px;pointer-events:auto;
+}
+
+/* Botones de cabecera con estilo notable y color temático */
+.hdr-btn{
+  position:relative;transition:all .18s ease;box-shadow:0 2px 6px rgba(0,0,0,0.35);
+}
+.hdr-lang{
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.25);color:#e2e8f0;font-weight:800;
+}
+.hdr-lang:hover{border-color:var(--accent);color:var(--accent);background:rgba(240,127,60,0.18)}
+
+.hdr-tz{
+  background:rgba(106,216,192,0.14);border:1px solid rgba(106,216,192,0.45);color:#6ad8c0;
+}
+.hdr-tz:hover{background:rgba(106,216,192,0.3);border-color:#6ad8c0;color:#fff;box-shadow:0 0 10px rgba(106,216,192,0.5)}
+
+.hdr-eye{
+  background:rgba(167,139,250,0.14);border:1px solid rgba(167,139,250,0.45);color:#c4b5fd;
+}
+.hdr-eye:hover{background:rgba(167,139,250,0.3);border-color:#a78bfa;color:#fff;box-shadow:0 0 10px rgba(167,139,250,0.5)}
+
+.hdr-ciclon{
+  background:rgba(255,107,74,0.16);border:1px solid rgba(255,107,74,0.5);color:#ff8a65;
+}
+.hdr-ciclon:hover{background:rgba(255,107,74,0.35);border-color:#ff6b4a;box-shadow:0 0 12px rgba(255,107,74,0.6)}
+
+.hdr-map{
+  background:rgba(16,185,129,0.14);border:1px solid rgba(16,185,129,0.45);color:#34d399;
+}
+.hdr-map:hover{background:rgba(16,185,129,0.3);border-color:#10b981;color:#fff;box-shadow:0 0 10px rgba(16,185,129,0.5)}
+
+.hdr-sat{
+  background:rgba(6,182,212,0.14);border:1px solid rgba(6,182,212,0.45);color:#22d3ee;
+}
+.hdr-sat:hover{background:rgba(6,182,212,0.3);border-color:#06b6d4;color:#fff;box-shadow:0 0 10px rgba(6,182,212,0.5)}
+
+.hdr-anal{
+  background:rgba(245,158,11,0.16);border:1px solid rgba(245,158,11,0.5);color:#fbbf24;
+}
+.hdr-anal:hover{background:rgba(245,158,11,0.35);border-color:#f59e0b;color:#fff;box-shadow:0 0 10px rgba(245,158,11,0.6)}
+
+.hdr-kiosk{
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.38);color:#ffffff;
+}
+.hdr-kiosk:hover{background:rgba(255,255,255,0.25);border-color:#ffffff;box-shadow:0 0 12px rgba(255,255,255,0.6)}
+
+header .src{margin-left:0;color:var(--muted);font-size:11px;text-align:right;pointer-events:auto}
 header .src .srcline,header .src .updline{display:block}
 header .src a{color:var(--muted)}
 #updated{color:var(--text)}
+
+/* Modal de Historial de Versiones & Roadmap */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(5,8,12,0.85);z-index:110;
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(10px);
+  padding:14px;box-sizing:border-box;
+}
+.modal-overlay.on{display:flex}
+.roadmap-box{
+  background:#0e141c;border:1px solid var(--line);border-radius:14px;
+  width:min(680px,96vw);max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.06);
+  position:relative;overflow:hidden;
+}
+.rm-header{
+  padding:16px 18px 12px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:rgba(18,25,35,0.6);
+}
+.rm-title-wrap{display:flex;align-items:center;gap:10px}
+.rm-logo-dot{width:10px;height:10px;border-radius:50%;background:var(--m4);animation:blink 1.6s infinite;flex-shrink:0}
+.rm-header h2{font-family:'Archivo',sans-serif;font-size:15px;font-weight:800;letter-spacing:.08em;margin:0;display:flex;align-items:center;gap:6px}
+.rm-header h2 span{color:var(--accent)}
+.rm-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+.rm-close-btn{
+  background:none;border:none;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;
+  padding:4px 8px;border-radius:6px;transition:all .15s;font-family:inherit;
+}
+.rm-close-btn:hover{color:#fff;background:rgba(255,255,255,0.1)}
+
+.rm-nav{
+  display:flex;gap:6px;padding:8px 16px;background:#131a24;border-bottom:1px solid var(--line);
+}
+.rm-tab{
+  flex:1;padding:8px 10px;background:none;border:none;border-radius:7px;
+  color:var(--muted);font-family:inherit;font-size:11px;font-weight:700;
+  cursor:pointer;transition:all .18s;text-align:center;
+}
+.rm-tab:hover{color:var(--text)}
+.rm-tab.act{background:#202c3a;color:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,0.35)}
+
+.rm-content{display:none;padding:16px 18px;overflow-y:auto;flex:1}
+.rm-content.act{display:block}
+.rm-content::-webkit-scrollbar{width:5px}
+.rm-content::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+
+.rm-timeline{position:relative;padding-left:20px;border-left:2px solid var(--line);margin-left:6px}
+.rm-entry{position:relative;margin-bottom:20px}
+.rm-entry::before{
+  content:'';position:absolute;left:-26px;top:4px;width:10px;height:10px;border-radius:50%;
+  background:var(--line);border:2px solid #0e141c;
+}
+.rm-entry.current::before{background:var(--accent);box-shadow:0 0 10px var(--accent)}
+.rm-tag{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--accent);
+  display:inline-flex;align-items:center;gap:6px;margin-bottom:4px;
+}
+.rm-now{background:var(--accent);color:#0b0f14;font-size:8.5px;padding:1px 5px;border-radius:3px;font-weight:800}
+.rm-entry h3{font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:6px}
+.rm-entry ul{padding-left:14px;margin:0;font-size:11px;color:#c0ccd8;line-height:1.55}
+.rm-entry ul li{margin-bottom:4px}
+.rm-entry ul li b{color:var(--text)}
+
+.rm-future-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:600px){ .rm-future-grid{grid-template-columns:1fr} }
+.rm-card{
+  background:#131b26;border:1px solid var(--line);border-radius:10px;padding:12px;
+  position:relative;display:flex;flex-direction:column;gap:6px;
+}
+.rm-card-badge{
+  font-size:9px;font-weight:700;color:#6ad8c0;background:rgba(106,216,192,0.12);
+  border:1px solid rgba(106,216,192,0.3);padding:2px 6px;border-radius:4px;display:inline-block;width:fit-content;
+}
+.rm-card h4{font-size:12px;font-weight:700;color:var(--text);margin:2px 0}
+.rm-card p{font-size:10.5px;color:var(--muted);line-height:1.45;margin:0}
 
 /* ---------- panels ---------- */
 .panel{
@@ -697,29 +834,34 @@ body.ocultarT #timeline{display:none}
 #mobilenav{display:none}
 @media (max-width:820px){
   header{
-    padding:6px 8px;gap:6px;flex-wrap:nowrap;align-items:center;
-    background:linear-gradient(to bottom,rgba(11,15,20,.96),rgba(11,15,20,0.4));
-    width:100%;box-sizing:border-box;
+    top:0;left:0;right:0;width:100%;
+    padding:6px 8px 6px;
+    background:linear-gradient(to bottom,rgba(11,15,20,0.97) 75%,rgba(11,15,20,0));
+    box-sizing:border-box;
+    display:flex;align-items:center;justify-content:space-between;gap:6px;
   }
-  header h1{font-size:12px;letter-spacing:.08em;flex-shrink:0;white-space:nowrap}
-  header .dot{width:7px;height:7px}
+  .brand{padding:2px 4px;gap:6px;flex-shrink:0}
+  .brand h1{font-size:12px;letter-spacing:.06em}
+  .ver-pill{font-size:8px;padding:1px 4px}
   header .hctrl{
-    margin-left:auto;gap:4px;display:flex;align-items:center;
-    flex-wrap:nowrap;justify-content:flex-end;flex-shrink:0;
+    margin:0 0 0 auto;gap:3px;display:flex;align-items:center;
+    flex-wrap:nowrap;justify-content:flex-end;
+    overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;
   }
+  header .hctrl::-webkit-scrollbar{display:none}
   #pnDatos,#pnEventos,#pnTl,#tzBtn{display:none} /* Trazo y paneles ya están en #mobilenav */
   header .hctrl button{
-    padding:0;width:28px;height:28px;min-width:28px;
+    padding:0;width:27px;height:27px;min-width:27px;
     font-size:10px;line-height:1;display:inline-flex;
     align-items:center;justify-content:center;border-radius:6px;
     flex-shrink:0;
   }
-  header .hctrl button.ciclon-hdr-btn img{width:16px;height:16px}
-  header .hctrl button svg{width:14px;height:14px}
-  #langBtn{width:auto;min-width:26px;padding:0 4px;font-size:10px}
+  header .hctrl button.ciclon-hdr-btn img{width:15px;height:15px}
+  header .hctrl button svg{width:13.5px;height:13.5px}
+  #langBtn{width:auto;min-width:24px;padding:0 3px;font-size:9.5px}
   header .src{display:none}
   #hint{display:none}
-  #status{top:68px;max-width:92vw;font-size:10px}
+  #status{top:62px;max-width:92vw;font-size:10px}
   #eyeFloat{top:auto;bottom:64px;right:10px}
   #kioskExit{top:auto;bottom:64px;right:54px}
 
@@ -870,27 +1012,146 @@ body.ocultarT #timeline{display:none}
 <canvas id="scene" tabindex="0"></canvas>
 
 <header>
-  <div class="dot"></div>
-  <h1>SISMO<span>·</span>MONITOR</h1>
+  <div class="brand" id="brandLogo" role="button" tabindex="0" title="Ver Historial de Versiones y Hoja de Ruta (Roadmap)">
+    <div class="dot"></div>
+    <h1>SISMO<span>·</span>MONITOR</h1>
+    <span class="ver-pill">v2.6</span>
+  </div>
   <div class="hctrl">
-    <button id="langBtn" title="English / Español">EN</button>
-    <button id="tzBtn" class="icobtn" title="Modo trazo manual"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5 11 9.5l4 5 3.5-8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="17.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="9.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="14.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <button id="pnDatos" class="icobtn" title="Datos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5h15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="12" width="3.2" height="5.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="10.4" y="8" width="3.2" height="9.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="14.8" y="4.5" width="3.2" height="13" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <button id="pnEventos" class="icobtn" title="Eventos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h10M9 12h10M9 17.5h10" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.2" cy="6.5" r="1.5" fill="currentColor"/><circle cx="5.2" cy="12" r="1.5" fill="currentColor"/><circle cx="5.2" cy="17.5" r="1.5" fill="currentColor"/></svg></button>
-    <button id="pnTl" class="icobtn" title="Sismógrafo 24 h"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12h3.2l2-6 3 13 2.8-9 2 5.5 1.7-3.5h4.3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <button id="eyeBtn" class="icobtn" title="Mostrar / ocultar menús"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <button id="infoBtn" title="Canal de avisos en Telegram e información" class="tgbtn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.06-.87 1.32-1.76.82l-4.86-3.58-2.35 2.26c-.26.26-.48.48-.98.48l.35-4.94L18 5.86c.39-.35-.08-.54-.6-.19L6.6 12.55l-4.79-1.5c-1.04-.33-1.06-1.04.22-1.54l18.72-7.22c.87-.32 1.63.2 1.15 2.01z"/></svg></button>
-    <button id="ciclonHdrBtn" title="CICLÓN·MONITOR — Ciclones tropicales y clima" class="icobtn ciclon-hdr-btn"><img src="icon-ciclon.png" alt="CICLÓN·MONITOR"></button>
-    <button id="mapBtn" class="icobtn" title="Cambiar vista: globo / mapa con ciudades"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.4v1.9M12 19.7v1.9M2.4 12h1.9M19.7 12h1.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15.4 8.6 10.9 10.9 8.6 15.4 13.1 13.1z" fill="currentColor"/><circle cx="12" cy="12" r="1.15" fill="var(--panel)"/></svg></button>
-    <button id="satBtn" class="icobtn" title="Vista satélite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2 10.2 6.6M13.8 13.8l3.6-3.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="2.6" y="8.1" width="5.9" height="4.2" rx="1" transform="rotate(-45 5.5 10.2)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="15.5" y="11.7" width="5.9" height="4.2" rx="1" transform="rotate(-45 18.5 13.8)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.9 12.1 12.1 9.9l2 2-2.2 2.2z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 20.5a5 5 0 0 0-4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.6 21a9 9 0 0 0-8.6-8.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-    <button id="analBtn" class="icobtn" title="Análisis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 15.5 10 10l3.5 3.5L19 5.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="13.5" cy="13.5" r="1.5" fill="currentColor"/><circle cx="19" cy="5.5" r="1.6" fill="currentColor"/></svg></button>
-    <button id="kioskBtn" class="icobtn" title="Modo pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 9V4.6a1 1 0 0 1 1-1H9M15 3.6h4.4a1 1 0 0 1 1 1V9M20.4 15v4.4a1 1 0 0 1-1 1H15M9 20.4H4.6a1 1 0 0 1-1-1V15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="langBtn" title="English / Español" class="hdr-btn hdr-lang">EN</button>
+    <button id="tzBtn" class="icobtn hdr-btn hdr-tz" title="Modo trazo manual"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 17.5 11 9.5l4 5 3.5-8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="17.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11" cy="9.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="15" cy="14.5" r="1.7" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18.5" cy="6.5" r="2.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="pnDatos" class="icobtn hdr-btn" title="Datos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5h15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="6" y="12" width="3.2" height="5.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="10.4" y="8" width="3.2" height="9.5" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="14.8" y="4.5" width="3.2" height="13" rx="1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="pnEventos" class="icobtn hdr-btn" title="Eventos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5h10M9 12h10M9 17.5h10" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5.2" cy="6.5" r="1.5" fill="currentColor"/><circle cx="5.2" cy="12" r="1.5" fill="currentColor"/><circle cx="5.2" cy="17.5" r="1.5" fill="currentColor"/></svg></button>
+    <button id="pnTl" class="icobtn hdr-btn" title="Sismógrafo 24 h"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12h3.2l2-6 3 13 2.8-9 2 5.5 1.7-3.5h4.3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="eyeBtn" class="icobtn hdr-btn hdr-eye" title="Mostrar / ocultar menús"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="infoBtn" title="Canal de avisos en Telegram e información" class="tgbtn hdr-btn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.7 19.4c-.24 1.06-.87 1.32-1.76.82l-4.86-3.58-2.35 2.26c-.26.26-.48.48-.98.48l.35-4.94L18 5.86c.39-.35-.08-.54-.6-.19L6.6 12.55l-4.79-1.5c-1.04-.33-1.06-1.04.22-1.54l18.72-7.22c.87-.32 1.63.2 1.15 2.01z"/></svg></button>
+    <button id="ciclonHdrBtn" title="CICLÓN·MONITOR — Ciclones tropicales y clima" class="icobtn hdr-btn hdr-ciclon"><img src="icon-ciclon.png" alt="CICLÓN·MONITOR"></button>
+    <button id="mapBtn" class="icobtn hdr-btn hdr-map" title="Cambiar vista: globo / mapa con ciudades"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M12 2.4v1.9M12 19.7v1.9M2.4 12h1.9M19.7 12h1.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M15.4 8.6 10.9 10.9 8.6 15.4 13.1 13.1z" fill="currentColor"/><circle cx="12" cy="12" r="1.15" fill="var(--panel)"/></svg></button>
+    <button id="satBtn" class="icobtn hdr-btn hdr-sat" title="Vista satélite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.2 10.2 6.6M13.8 13.8l3.6-3.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="2.6" y="8.1" width="5.9" height="4.2" rx="1" transform="rotate(-45 5.5 10.2)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="15.5" y="11.7" width="5.9" height="4.2" rx="1" transform="rotate(-45 18.5 13.8)" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.9 12.1 12.1 9.9l2 2-2.2 2.2z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 20.5a5 5 0 0 0-4-4" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M19.6 21a9 9 0 0 0-8.6-8.6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button id="analBtn" class="icobtn hdr-btn hdr-anal" title="Análisis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 15.5 10 10l3.5 3.5L19 5.5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10" r="1.5" fill="currentColor"/><circle cx="13.5" cy="13.5" r="1.5" fill="currentColor"/><circle cx="19" cy="5.5" r="1.6" fill="currentColor"/></svg></button>
+    <button id="kioskBtn" class="icobtn hdr-btn hdr-kiosk" title="Modo pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 9V4.6a1 1 0 0 1 1-1H9M15 3.6h4.4a1 1 0 0 1 1 1V9M20.4 15v4.4a1 1 0 0 1-1 1H15M9 20.4H4.6a1 1 0 0 1-1-1V15" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </div>
   <div class="src">
     <span class="srcline"><span data-i18n="fuentes">Fuentes:</span> <a href="https://earthquake.usgs.gov" target="_blank">USGS</a> · <a href="http://www.funvisis.gob.ve" target="_blank">FUNVISIS</a> · <a href="https://www.seismicportal.eu" target="_blank">EMSC</a></span>
     <span class="updline"><span data-i18n="actualizacion">Última actualización:</span> <span id="updated">—</span></span>
   </div>
 </header>
+
+<!-- Modal de Historial de Versiones (Changelog) y Roadmap -->
+<div id="modalRoadmap" class="modal-overlay">
+  <div class="roadmap-box">
+    <div class="rm-header">
+      <div class="rm-title-wrap">
+        <div class="rm-logo-dot"></div>
+        <div>
+          <h2>SISMO<span>·</span>MONITOR <span class="ver-pill">v2.6</span></h2>
+          <p class="rm-sub">Bitácora Oficial de Cambios & Hoja de Ruta (Roadmap)</p>
+        </div>
+      </div>
+      <button id="rmClose" class="rm-close-btn" title="Cerrar">&times;</button>
+    </div>
+
+    <div class="rm-nav">
+      <button class="rm-tab act" data-rmtab="historial">📜 Historial de Versiones</button>
+      <button class="rm-tab" data-rmtab="roadmap">🚀 Próximas Mejoras (Roadmap)</button>
+    </div>
+
+    <div id="rmTabHistorial" class="rm-content act">
+      <div class="rm-timeline">
+
+        <div class="rm-entry current">
+          <div class="rm-tag">v2.6 · Septiembre 2026 <span class="rm-now">ACTUAL</span></div>
+          <h3>⚡ Optimización Móvil, Mini-Fichas & Geofísica Avanzada</h3>
+          <ul>
+            <li><b>Mini-Tarjeta Ultracompacta en Móvil:</b> Rediseño flotante que deja libre el 85% de la pantalla para observar el epicentro y las ciudades circundantes, con expansor deslizable para detalles técnicos.</li>
+            <li><b>Modo Trazo Multi-Punto Continuo:</b> Conexión fluida de puntos en el mapa 2D y globo 3D con lista numerada y cálculo dinámico de distancia y tiempo sin bloqueos de GPU.</li>
+            <li><b>Ondas Expansivas e Isoseistas:</b> Simulación física de 3 radios de percepción (MMI VI+, IV-V, II-III) y cálculo del tiempo de llegada de ondas secundarias (Onda S) a ciudades cercanas.</li>
+            <li><b>Análisis por Pestañas & TNT:</b> División en 3 vistas ordenadas (Actividad, Geofísica TNT & Gutenberg-Richter, Lista de Eventos) con soporte de filtros por región y periodicidad.</li>
+            <li><b>Barra de Navegación & Botonera Mejorada:</b> Botones de cabecera centrados con código de color temático e integración de este registro interactivo.</li>
+          </ul>
+        </div>
+
+        <div class="rm-entry">
+          <div class="rm-tag">v2.5 · Agosto 2026</div>
+          <h3>🤝 Participación Ciudadana & Formatos para Redes</h3>
+          <ul>
+            <li><b>Widget Comunitario "¿Sentiste este sismo?":</b> Votación instantánea de intensidad sentida (Débil, Leve, Moderado, Fuerte) con almacenamiento en tiempo real.</li>
+            <li><b>Generador de Infografías HD:</b> Exportación directa de fichas gráficas en formatos 9:16 (Historias/Reels/TikTok), 1:1 (Feed) y 16:9 con paleta temática.</li>
+            <li><b>Capa de Calor (Heatmap):</b> Mapa de calor interactivo ponderado por magnitud y densidad de eventos.</li>
+          </ul>
+        </div>
+
+        <div class="rm-entry">
+          <div class="rm-tag">v2.4 · Julio 2026</div>
+          <h3>🛰️ Integración Satelital NASA & Ciclones en Vivo</h3>
+          <ul>
+            <li><b>Imágenes Satelitales NASA GIBS:</b> Capa de satélite VIIRS TrueColor actualizada diariamente.</li>
+            <li><b>CICLÓN·MONITOR Integrado:</b> Seguimiento en tiempo real de huracanes, tormentas y disturbios tropicales en el Atlántico y Caribe.</li>
+            <li><b>Capas Cartográficas ESRI:</b> Imágenes de satélite de alta resolución con relieve y fronteras.</li>
+            <li><b>Trazado de Placas Tectónicas:</b> Visualización de límites de placas mundiales con antimeridiano corregido.</li>
+          </ul>
+        </div>
+
+        <div class="rm-entry">
+          <div class="rm-tag">v2.3 · Junio 2026</div>
+          <h3>📡 Automatización Multi-Fuente & Sismógrafo 24h</h3>
+          <ul>
+            <li><b>Alimentación en Tiempo Real:</b> Scraping y sincronización automática cada 15 min de FUNVISIS, USGS y EMSC mediante proxy Apps Script y Supabase.</li>
+            <li><b>Sismógrafo Acumulado 24h:</b> Gráfico interactivo de barras temporales por hora con magnitudes coloreadas.</li>
+            <li><b>Cálculo de TNT & Gutenberg-Richter:</b> Cálculo de energía sísmica liberada en Joules y tonelaje de dinamita TNT.</li>
+          </ul>
+        </div>
+
+        <div class="rm-entry">
+          <div class="rm-tag">v2.0 - v2.2 · Mayo 2026</div>
+          <h3>🌐 Modo Kiosko, Internacionalización & Herramientas</h3>
+          <ul>
+            <li><b>Modo Pantalla Completa / Kiosko:</b> Diseñado para salas de monitoreo y pantallas de visualización pública.</li>
+            <li><b>Soporte Bilingüe:</b> Traducción instantánea inglés / español en toda la interfaz.</li>
+            <li><b>Exportación de Datos:</b> Descarga en formatos CSV, TXT y GeoJSON.</li>
+          </ul>
+        </div>
+
+        <div class="rm-entry">
+          <div class="rm-tag">v1.0 · Abril 2026</div>
+          <h3>🌍 Nacimiento de SISMO·MONITOR</h3>
+          <ul>
+            <li>Lanzamiento del Globo 3D interactivo con Three.js.</li>
+            <li>Representación visual de sismos por colores y radios proporcionales a la magnitud.</li>
+            <li>Filtros dinámicos por tiempo, magnitud mínima y región geográfica.</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="rmTabRoadmap" class="rm-content">
+      <div class="rm-future-grid">
+        <div class="rm-card">
+          <div class="rm-card-badge">Fase 1 · Próxima entrega</div>
+          <h4>🔔 Notificaciones Push Web & PWA</h4>
+          <p>Alertas sonoras y notificaciones push en segundo plano para sismos $M \ge 4.0$ o eventos a menos de $100\text{ km}$ de la ubicación del usuario, sin requerir app instalada.</p>
+        </div>
+        <div class="rm-card">
+          <div class="rm-card-badge">Fase 2 · En desarrollo</div>
+          <h4>🌊 Simulador Costero de Tsunamis</h4>
+          <p>Modelado hidrodinámico preliminar de tiempos de arribo de olas de tsunami en costas del Caribe y Venezuela tras sismos submarinos $M \ge 6.5$.</p>
+        </div>
+        <div class="rm-card">
+          <div class="rm-card-badge">Fase 3 · Planificado</div>
+          <h4>🤖 IA & Modelado de Probabilidad de Réplicas</h4>
+          <p>Algoritmos de aprendizaje automático basados en la Ley de Omori y Ley de Bath para estimar la probabilidad y magnitudes esperadas de réplicas en fallas activas (Boconó, San Sebastián, El Pilar).</p>
+        </div>
+        <div class="rm-card">
+          <div class="rm-card-badge">Fase 4 · Investigación</div>
+          <h4>📱 Red Ciudadana de Acelerógrafos Móviles</h4>
+          <p>Uso optativo del acelerómetro del smartphone de los usuarios conectados para detectar movimientos telúricos segundos antes de las ondas destructivas $S$.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 <button id="kioskExit" title="Salir de pantalla completa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 <button id="eyeFloat" title="Mostrar menús"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 
@@ -1796,6 +2057,37 @@ document.getElementById('dshare').addEventListener('click', async ()=>{
     }
     setTimeout(()=>{ btn.textContent = t('compartir'); }, 2500);
   }
+});
+
+/* ================= Modal de Roadmap & Changelog ================= */
+const brandLogo = document.getElementById('brandLogo');
+const modalRoadmap = document.getElementById('modalRoadmap');
+const rmClose = document.getElementById('rmClose');
+
+function abrirRoadmap(){
+  if(modalRoadmap) modalRoadmap.classList.add('on');
+}
+function cerrarRoadmap(){
+  if(modalRoadmap) modalRoadmap.classList.remove('on');
+}
+
+if(brandLogo) brandLogo.addEventListener('click', abrirRoadmap);
+if(rmClose) rmClose.addEventListener('click', cerrarRoadmap);
+if(modalRoadmap){
+  modalRoadmap.addEventListener('click', (e)=>{
+    if(e.target === modalRoadmap) cerrarRoadmap();
+  });
+}
+
+document.querySelectorAll('.rm-tab').forEach(tab => {
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.rm-tab').forEach(t => t.classList.remove('act'));
+    document.querySelectorAll('.rm-content').forEach(c => c.classList.remove('act'));
+    tab.classList.add('act');
+    const target = tab.dataset.rmtab === 'roadmap' ? 'rmTabRoadmap' : 'rmTabHistorial';
+    const cEl = document.getElementById(target);
+    if(cEl) cEl.classList.add('act');
+  });
 });
 
 /* ================= tarjeta de imagen multiformato (1080p) ================= */
