@@ -2,11 +2,11 @@
  * Estrategia:
  *  - Cascarón de la app (HTML, íconos, librería 3D): caché primero
  *    → carga instantánea e inicio sin conexión.
- *  - Datos sísmicos (USGS, proxy, espejo): SIEMPRE red, nunca caché
+ *  - Datos sísmicos (USGS, proxy, espejo, Supabase): SIEMPRE red, nunca caché
  *    → un panel de tiempo real jamás debe mostrar datos viejos como frescos.
  * Al actualizar la web, sube también este archivo cambiando VERSION.
  */
-const VERSION = 'v36';
+const VERSION = 'v37';
 const CACHE = 'sismo-monitor-' + VERSION;
 
 const PRECACHE = [
@@ -83,5 +83,41 @@ self.addEventListener('fetch', e => {
         return r;
       })
     )
+  );
+});
+
+/* ================= Notificaciones Web Push ================= */
+self.addEventListener('push', e => {
+  let data = { title: 'SISMO·MONITOR', body: 'Nuevo sismo registrado' };
+  try {
+    if (e.data) data = e.data.json();
+  } catch(err) {
+    if (e.data) data.body = e.data.text();
+  }
+
+  const options = {
+    body: data.body,
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    vibrate: [200, 100, 200],
+    data: {
+      url: data.url || './'
+    }
+  };
+
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'SISMO·MONITOR', options)
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window' }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url && 'focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(e.notification.data.url || './');
+    })
   );
 });

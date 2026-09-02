@@ -11,6 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
 <title>SISMO·MONITOR — Actividad sísmica mundial en tiempo real</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Archivo:wght@500;600;800&display=swap');
 
@@ -700,8 +701,32 @@ body.ocultarT #timeline{display:none}
   #mobilenav button .ico{font-size:17px;line-height:1}
   #mobilenav button.act{color:var(--accent)}
 }
-@media (prefers-reduced-motion:reduce){
-  header .dot{animation:none}
+/* === MEJORAS: Realtime, Felt, Heatmap, Social Card, Gutenberg-Richter === */
+.felt-widget{margin:10px 0 6px;padding:9px;background:#141b24;border:1px solid var(--line);border-radius:8px}
+.felt-title{font-size:11px;font-weight:600;color:var(--text);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.felt-btns{display:flex;gap:4px;flex-wrap:wrap}
+.felt-btn{flex:1;min-width:54px;padding:5px 2px;background:#1b2430;border:1px solid var(--line);border-radius:5px;color:var(--text);font-family:inherit;font-size:10px;cursor:pointer;transition:background .15s,border-color .15s}
+.felt-btn:hover{border-color:var(--accent);background:#222f3e}
+.felt-btn.act{background:var(--accent);color:#0b0f14;font-weight:700;border-color:var(--accent)}
+.felt-msg{font-size:10.5px;color:var(--m1);margin-top:6px;display:none}
+.felt-badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:9.5px;font-weight:700;margin-left:6px;text-transform:uppercase}
+
+#dCardModal{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;display:none;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+#dCardModal.on{display:flex}
+.dcard-box{background:#10151c;border:1px solid var(--line);border-radius:12px;padding:18px;max-width:380px;width:90%;box-shadow:0 16px 40px rgba(0,0,0,0.8);position:relative}
+.dcard-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:14px 0}
+.dcard-opt{background:#161d26;border:1px solid var(--line);border-radius:8px;padding:10px 6px;text-align:center;cursor:pointer;color:var(--text);font-family:inherit;font-size:10.5px;transition:all .15s}
+.dcard-opt:hover,.dcard-opt.act{border-color:var(--accent);background:rgba(240,127,60,0.15);color:var(--accent)}
+.dcard-actions{display:flex;gap:8px;margin-top:14px}
+.dcard-actions button{flex:1;padding:9px;border-radius:7px;border:none;font-family:inherit;font-weight:700;font-size:11.5px;cursor:pointer}
+.dcard-actions .pri{background:var(--accent);color:#0b0f14}
+.dcard-actions .sec{background:#1e2833;color:var(--text)}
+
+.live-pulse{animation:pulseGlow 2s infinite ease-in-out}
+@keyframes pulseGlow{
+  0%{box-shadow:0 0 0 0 rgba(232,72,79,0.7)}
+  70%{box-shadow:0 0 0 16px rgba(232,72,79,0)}
+  100%{box-shadow:0 0 0 0 rgba(232,72,79,0)}
 }
 </style>
 </head>
@@ -828,9 +853,46 @@ body.ocultarT #timeline{display:none}
   <div class="drow" id="drowFelt"><span class="k" data-i18n="feltL">Reportes de personas</span><span id="dfelt"></span></div>
   <div class="drow"><span class="k" data-i18n="fuenteL">Fuente</span><span id="dsrc"></span></div>
   <div class="drow"><span class="k" data-i18n="ficha">Ficha del evento</span><a id="dlink" href="#" target="_blank" style="color:var(--accent)" data-i18n="abrir">abrir ↗</a></div>
+  
+  <div id="dFeltWidget" class="felt-widget">
+    <div class="felt-title">
+      <span>¿Sentiste este sismo?</span>
+      <span id="dFeltCount" style="color:var(--muted);font-size:10px"></span>
+    </div>
+    <div class="felt-btns">
+      <button data-intensidad="debil" data-mmi="2" class="felt-btn">🟢 Débil</button>
+      <button data-intensidad="leve" data-mmi="4" class="felt-btn">🟡 Leve</button>
+      <button data-intensidad="moderado" data-mmi="5" class="felt-btn">🟠 Moderado</button>
+      <button data-intensidad="fuerte" data-mmi="7" class="felt-btn">🔴 Fuerte</button>
+    </div>
+    <div id="feltMsg" class="felt-msg">¡Reporte registrado en tiempo real!</div>
+  </div>
+
   <div id="drowbtns">
     <button id="dshare" data-i18n="compartir">🔗 Compartir</button>
-    <button id="dcard" data-i18n="tarjeta">🖼 Tarjeta</button>
+    <button id="dcard" data-i18n="tarjeta">🖼 Infografía HD</button>
+  </div>
+</div>
+
+<div id="dCardModal">
+  <div class="dcard-box">
+    <h3 style="font-size:13px;font-weight:700;margin-bottom:4px;color:var(--text)">Generar Infografía</h3>
+    <p style="font-size:11px;color:var(--muted)">Elige el formato optimizado para compartir en redes:</p>
+    <div class="dcard-opts">
+      <div class="dcard-opt act" data-fmt="historia">
+        <b>9:16</b><br>Historia / Reels
+      </div>
+      <div class="dcard-opt" data-fmt="cuadrado">
+        <b>1:1</b><br>Post / WhatsApp
+      </div>
+      <div class="dcard-opt" data-fmt="banner">
+        <b>16:9</b><br>Twitter / X
+      </div>
+    </div>
+    <div class="dcard-actions">
+      <button class="sec" id="dcardCancel">Cancelar</button>
+      <button class="pri" id="dcardDescargar">Descargar imagen</button>
+    </div>
   </div>
 </div>
 
@@ -841,7 +903,7 @@ body.ocultarT #timeline{display:none}
 
 <div class="panel" id="analisis">
   <button id="anClose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>
-  <h2 data-i18n="analisisT">Análisis · catálogo USGS</h2>
+  <h2 data-i18n="analisisT">Análisis · catálogo histórico</h2>
   <div class="actrl">
     <span data-i18n="rango" style="color:var(--muted);font-size:11px">Rango</span>
     <select id="anRango">
@@ -851,17 +913,26 @@ body.ocultarT #timeline{display:none}
     <span data-i18n="region" style="color:var(--muted);font-size:11px">Región</span>
     <select id="anRegion"></select>
   </div>
-  <div id="anLoading" data-i18n="consultando">Consultando catálogo USGS…</div>
+  <div id="anLoading" data-i18n="consultando">Consultando catálogo histórico…</div>
   <div id="anBody" style="display:none">
     <div class="anums">
       <div><b id="anTotal">—</b><span data-i18n="eventos">Eventos</span></div>
       <div><b id="anMax">—</b><span data-i18n="magmax">Magnitud máx.</span></div>
       <div><b id="anProm">—</b><span data-i18n="promdia">prom./día</span></div>
     </div>
+    <div class="anums" style="margin-top:10px">
+      <div><b id="anEnergia">—</b><span>Energía Sísmica</span></div>
+      <div><b id="anTnt">—</b><span>Equiv. TNT</span></div>
+      <div><b id="anValorB">—</b><span>Valor b (G-R)</span></div>
+    </div>
     <h3 data-i18n="magTiempo">Magnitud vs tiempo</h3>
     <canvas id="chMag" height="190"></canvas>
     <h3 data-i18n="porDia">Eventos por día</h3>
     <canvas id="chDia" height="150"></canvas>
+    <h3>Energía Sísmica Acumulada</h3>
+    <canvas id="chEnergia" height="140"></canvas>
+    <h3>Distribución Gutenberg-Richter (log N vs M)</h3>
+    <canvas id="chGr" height="140"></canvas>
     <h3><span data-i18n="listaPeriodo">Eventos del período</span> <span id="anListCount" style="float:right;color:var(--text)"></span></h3>
     <div id="anList"></div>
     <button id="anMas" data-i18n="mostrarMas">Mostrar más</button>
@@ -985,6 +1056,7 @@ body.ocultarT #timeline{display:none}
 <div id="satmapa"></div>
 <div class="satbtns">
   <button id="satCerrar" title="Volver al globo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>
+  <button id="satHeatBtn" title="Mapa de calor (Densidad sísmica)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c-4 4-6 7.5-6 10.5a6 6 0 0 0 12 0C18 9.5 16 6 12 2z" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="14" r="2.5" fill="currentColor"/></svg></button>
   <button id="satCentrar" title="Centrar en mi ubicación"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><circle cx="12" cy="12" r="7.6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M12 1.9v2.6M12 19.5v2.6M1.9 12h2.6M19.5 12h2.6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>
   <button id="satZoomIn" title="Acercar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>
   <button id="satZoomOut" title="Alejar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12h13" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>
@@ -1414,6 +1486,15 @@ function selectQuake(q, fly){
     document.getElementById('dfelt').textContent = q.felt.toLocaleString(LANG==='en'?'en-GB':'es');
     rowF.style.display = 'flex';
   } else rowF.style.display = 'none';
+
+  // Widget comunitario ¿Lo sentiste?
+  document.querySelectorAll('.felt-btn').forEach(b => b.classList.remove('act'));
+  const msgF = document.getElementById('feltMsg');
+  if(msgF) msgF.style.display = 'none';
+  const cF = document.getElementById('dFeltCount');
+  if(cF) cF.textContent = '';
+  actualizarContadorFelt(q.id);
+
   const dl = document.getElementById('dlink');
   if(q.url){ dl.style.display=''; dl.href = q.url; } else { dl.style.display='none'; }
   document.getElementById('detail').classList.add('on');
@@ -1519,21 +1600,69 @@ document.getElementById('dshare').addEventListener('click', async ()=>{
   }
 });
 
-/* ================= tarjeta de imagen ================= */
-function generarTarjeta(q){
-  const S = 1000;
+/* ================= tarjeta de imagen multiformato (1080p) ================= */
+let formatoTarjetaActual = 'historia';
+
+document.querySelectorAll('.dcard-opt').forEach(opt => {
+  opt.addEventListener('click', ()=>{
+    document.querySelectorAll('.dcard-opt').forEach(o => o.classList.remove('act'));
+    opt.classList.add('act');
+    formatoTarjetaActual = opt.dataset.fmt || 'historia';
+  });
+});
+
+document.getElementById('dcardCancel').addEventListener('click', ()=>{
+  document.getElementById('dCardModal').classList.remove('on');
+});
+
+document.getElementById('dcard').addEventListener('click', ()=>{
+  const q = selectedQ || allQuakes.find(x=>x.id===selectedId);
+  if(!q) return;
+  document.getElementById('dCardModal').classList.add('on');
+});
+
+document.getElementById('dcardDescargar').addEventListener('click', async ()=>{
+  const q = selectedQ || allQuakes.find(x=>x.id===selectedId);
+  if(!q) return;
+  const btn = document.getElementById('dcardDescargar');
+  const txtOrig = btn.textContent;
+  btn.textContent = 'Generando HD…';
+  try{
+    const blob = await generarTarjeta(q, formatoTarjetaActual);
+    const file = new File([blob], `sismo-${q.id}-${formatoTarjetaActual}.png`, {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({files:[file], title:'SISMO·MONITOR', text:urlEvento(q)});
+      }catch(e){}
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    }
+  }catch(e){}
+  btn.textContent = txtOrig;
+  document.getElementById('dCardModal').classList.remove('on');
+});
+
+function generarTarjeta(q, formato = 'historia'){
+  let W = 1080, H = 1920;
+  if(formato === 'cuadrado'){ W = 1080; H = 1080; }
+  else if(formato === 'banner'){ W = 1200; H = 675; }
+
   const cv = document.createElement('canvas');
-  cv.width = S; cv.height = S;
+  cv.width = W; cv.height = H;
   const c = cv.getContext('2d');
 
-  c.fillStyle = '#0b0f14'; c.fillRect(0,0,S,S);
+  c.fillStyle = '#0b0f14'; c.fillRect(0,0,W,H);
 
-  // mini-mapa regional centrado en el epicentro (proyección equirectangular ±18°)
-  const span = 18;
+  // mini-mapa regional centrado en el epicentro (proyección equirectangular)
+  const span = formato === 'banner' ? 24 : 18;
   const proj = (lon,lat)=>{
     let dl = lon - q.lon;
     if(dl > 180) dl -= 360; if(dl < -180) dl += 360;
-    return [S/2 + dl/span*(S/2), S*0.5 - (lat-q.lat)/span*(S/2)];
+    return [W/2 + dl/span*(W/2), H*0.44 - (lat-q.lat)/span*(W/2)];
   };
   const dibujar = (data, estilo, w)=>{
     c.strokeStyle = estilo; c.lineWidth = w;
@@ -1543,82 +1672,140 @@ function generarTarjeta(q){
         const lon = flat[i], lat = flat[i+1];
         let dl = lon - q.lon;
         if(dl > 180) dl -= 360; if(dl < -180) dl += 360;
-        if(Math.abs(dl) > span+4 || Math.abs(lat-q.lat) > span+4){ dentro = false; continue; }
+        if(Math.abs(dl) > span+6 || Math.abs(lat-q.lat) > span+6){ dentro = false; continue; }
         const [x,y] = proj(lon,lat);
         if(!dentro){ c.moveTo(x,y); dentro = true; } else c.lineTo(x,y);
       }
       c.stroke();
     });
   };
-  dibujar(COAST, '#2c3a48', 2.5);
-  dibujar(PLATES, '#7a4530', 2);
+  dibujar(COAST, '#222f3e', 2.8);
+  dibujar(PLATES, '#7a4530', 2.2);
 
-  // epicentro con anillos
+  // epicentro con anillos de impacto
   const col = q.mag>=6 ? '#e8484f' : q.mag>=4.5 ? '#f07f3c' : q.mag>=2.5 ? '#e8b23c' : '#3ec6a8';
   const [ex,ey] = proj(q.lon, q.lat);
-  [[100,.22],[64,.45],[36,.75]].forEach(([r,a])=>{
+  [[120,.25],[75,.5],[40,.85]].forEach(([r,a])=>{
     c.beginPath(); c.arc(ex,ey,r,0,7);
     c.strokeStyle = col; c.globalAlpha = a; c.lineWidth = 4; c.stroke();
   });
   c.globalAlpha = 1;
-  c.beginPath(); c.arc(ex,ey,15,0,7); c.fillStyle = col; c.fill();
+  c.beginPath(); c.arc(ex,ey,16,0,7); c.fillStyle = col; c.fill();
 
-  // veladura para legibilidad del texto
-  const g = c.createLinearGradient(0,0,0,S);
-  g.addColorStop(0,'rgba(11,15,20,.9)'); g.addColorStop(.32,'rgba(11,15,20,.15)');
-  g.addColorStop(.6,'rgba(11,15,20,.2)'); g.addColorStop(1,'rgba(11,15,20,.94)');
-  c.fillStyle = g; c.fillRect(0,0,S,S);
+  // gradiente estético oscuro
+  const g = c.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'rgba(11,15,20,.94)');
+  g.addColorStop(.25,'rgba(11,15,20,.2)');
+  g.addColorStop(.65,'rgba(11,15,20,.35)');
+  g.addColorStop(1,'rgba(11,15,20,.96)');
+  c.fillStyle = g; c.fillRect(0,0,W,H);
 
-  // marca
-  c.fillStyle = '#dde7ef'; c.font = '800 36px Archivo, sans-serif';
-  c.fillText('SISMO·MONITOR', 50, 76);
-  c.fillStyle = '#e8484f'; c.beginPath(); c.arc(36,64,7,0,7); c.fill();
+  // Encabezado / Branding
+  c.fillStyle = '#dde7ef'; c.font = '800 42px Archivo, sans-serif';
+  c.fillText('SISMO·MONITOR', 60, 90);
+  c.fillStyle = '#e8484f'; c.beginPath(); c.arc(42,76,8,0,7); c.fill();
 
-  // magnitud
-  c.fillStyle = col; c.font = '800 150px Archivo, sans-serif';
-  c.fillText('M '+q.mag.toFixed(1), 46, S-250);
+  c.fillStyle = '#7c8a99'; c.font = '600 20px JetBrains Mono, monospace';
+  c.fillText('RED SISMOLÓGICA GLOBAL · ALERTA EN VIVO', 60, 130);
 
-  // lugar (hasta 2 líneas)
-  c.fillStyle = '#dde7ef'; c.font = '500 38px JetBrains Mono, monospace';
+  // Magnitud Grande
+  const magY = formato === 'banner' ? H - 220 : formato === 'cuadrado' ? H - 320 : H - 540;
+  c.fillStyle = col; c.font = '800 160px Archivo, sans-serif';
+  c.fillText('M '+q.mag.toFixed(1), 56, magY);
+
+  // Lugar
+  c.fillStyle = '#dde7ef'; c.font = '600 42px JetBrains Mono, monospace';
   const palabras = q.place.split(' ');
   let linea = '', lineas = [];
   palabras.forEach(w=>{
-    if(c.measureText(linea+' '+w).width > S-100 && linea){ lineas.push(linea); linea = w; }
+    if(c.measureText(linea+' '+w).width > W-120 && linea){ lineas.push(linea); linea = w; }
     else linea = linea ? linea+' '+w : w;
   });
   lineas.push(linea);
-  lineas.slice(0,2).forEach((l,i)=>c.fillText(l, 50, S-180+i*48));
+  lineas.slice(0,3).forEach((l,i)=>c.fillText(l, 60, magY + 65 + i*54));
 
-  // meta y URL
-  c.fillStyle = '#7c8a99'; c.font = '400 28px JetBrains Mono, monospace';
-  c.fillText(fmtTime(q.time)+'  ·  '+t('prof')+' '+q.depth.toFixed(0)+' km  ·  '+q.src, 50, S-84);
-  c.fillStyle = '#5a6a7c'; c.font = '400 25px JetBrains Mono, monospace';
-  c.fillText(location.host+location.pathname, 50, S-38);
+  // Datos técnicos en caja semitransparente
+  const metaY = formato === 'banner' ? H - 70 : formato === 'cuadrado' ? H - 110 : H - 210;
+  c.fillStyle = 'rgba(22,29,38,0.85)';
+  c.fillRect(50, metaY - 45, W - 100, 80);
+  c.strokeStyle = '#1e2833'; c.lineWidth = 1.5;
+  c.strokeRect(50, metaY - 45, W - 100, 80);
+
+  c.fillStyle = '#dde7ef'; c.font = '500 24px JetBrains Mono, monospace';
+  c.fillText(`📅 ${fmtTime(q.time)}   ·   📍 ${q.lat.toFixed(2)}°, ${q.lon.toFixed(2)}°   ·   ⚡ Prof: ${q.depth.toFixed(0)} km`, 70, metaY + 5);
+
+  // Footer
+  c.fillStyle = '#5a6a7c'; c.font = '500 22px JetBrains Mono, monospace';
+  c.fillText(`Fuente: ${q.src}  ·  sismomonitor.app`, 60, H - 35);
 
   return new Promise(res=>cv.toBlob(res, 'image/png'));
 }
 
-document.getElementById('dcard').addEventListener('click', async ()=>{
+/* ================= reportes comunitarios (¿Lo sentiste?) ================= */
+async function enviarReporteFelt(intensidad, mmi){
   const q = selectedQ || allQuakes.find(x=>x.id===selectedId);
   if(!q) return;
-  const btn = document.getElementById('dcard');
-  btn.textContent = '…';
+  const btns = document.querySelectorAll('.felt-btn');
+  btns.forEach(b => b.classList.toggle('act', b.dataset.intensidad === intensidad));
+  const msg = document.getElementById('feltMsg');
+  msg.style.display = 'block';
+  msg.textContent = 'Enviando reporte…';
+
   try{
-    const blob = await generarTarjeta(q);
-    const file = new File([blob], 'sismo-M'+q.mag.toFixed(1)+'.png', {type:'image/png'});
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      try{
-        await navigator.share({files:[file], title:'SISMO·MONITOR', text:urlEvento(q)});
-      }catch(e){ /* usuario canceló */ }
-    } else {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = file.name;
-      a.click();
-      setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    let lat = null, lon = null;
+    if(navigator.geolocation){
+      try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 }));
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+      }catch(e){}
+    }
+
+    if(SUPABASE_URL && SUPABASE_ANON_KEY){
+      await fetch(`${SUPABASE_URL.replace(/\/$/,'')}/rest/v1/reportes_sentidos`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sismo_id: q.id,
+          intensidad: intensidad,
+          intensidad_mmi: mmi,
+          lat: lat,
+          lon: lon
+        })
+      });
+    }
+    msg.textContent = '¡Reporte registrado! Gracias por colaborar.';
+    actualizarContadorFelt(q.id);
+  }catch(e){
+    msg.textContent = 'Reporte procesado localmente.';
+  }
+}
+
+async function actualizarContadorFelt(sismoId){
+  if(!SUPABASE_URL || !SUPABASE_ANON_KEY || !sismoId) return;
+  try{
+    const r = await fetch(`${SUPABASE_URL.replace(/\/$/,'')}/rest/v1/reportes_sentidos?sismo_id=eq.${encodeURIComponent(sismoId)}&select=id`, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'Prefer': 'count=exact' }
+    });
+    const range = r.headers.get('content-range');
+    const count = range ? range.split('/')[1] : '0';
+    const el = document.getElementById('dFeltCount');
+    if(el && Number(count) > 0){
+      el.textContent = `(${count} reportes)`;
     }
   }catch(e){}
-  btn.textContent = t('tarjeta');
+}
+
+document.querySelectorAll('.felt-btn').forEach(b => {
+  b.addEventListener('click', ()=>{
+    const intensidad = b.dataset.intensidad;
+    const mmi = parseInt(b.dataset.mmi) || 2;
+    enviarReporteFelt(intensidad, mmi);
+  });
 });
 
 /* ================= análisis histórico (catálogo USGS) ================= */
@@ -1766,6 +1953,39 @@ async function cargarAnalisis(){
   document.getElementById('anMax').textContent = datos.length ? Math.max(...datos.map(d=>d.mag)).toFixed(1) : '—';
   document.getElementById('anProm').textContent = (datos.length/dias).toFixed(datos.length/dias<10?1:0);
 
+  // Cálculo de Energía Sísmica Acumulada: log10 E = 4.8 + 1.5*M (Joules)
+  let eTotalJoules = 0;
+  datos.forEach(d => { eTotalJoules += Math.pow(10, 4.8 + 1.5 * d.mag); });
+  const tntTons = eTotalJoules / 4.184e9;
+  let txtE = '';
+  if(eTotalJoules >= 1e15) txtE = (eTotalJoules/1e15).toFixed(2) + ' PJ';
+  else if(eTotalJoules >= 1e12) txtE = (eTotalJoules/1e12).toFixed(2) + ' TJ';
+  else if(eTotalJoules >= 1e9) txtE = (eTotalJoules/1e9).toFixed(2) + ' GJ';
+  else txtE = (eTotalJoules/1e6).toFixed(1) + ' MJ';
+  
+  let txtTnt = '';
+  if(tntTons >= 1e6) txtTnt = (tntTons/1e6).toFixed(2) + ' Mt';
+  else if(tntTons >= 1e3) txtTnt = (tntTons/1e3).toFixed(1) + ' kt';
+  else txtTnt = tntTons.toFixed(1) + ' t';
+  
+  document.getElementById('anEnergia').textContent = txtE || '—';
+  document.getElementById('anTnt').textContent = txtTnt || '—';
+
+  // Valor b Gutenberg-Richter: b = log10(e) / (mean(M) - M_min)
+  let valB = '—';
+  if(datos.length >= 10){
+    const mags = datos.map(d => d.mag);
+    const mMin = Math.min(...mags);
+    const mediaM = mags.reduce((a,b)=>a+b, 0) / mags.length;
+    if(mediaM > mMin){
+      const bCalc = Math.LOG10E / (mediaM - mMin);
+      if(isFinite(bCalc) && bCalc > 0.3 && bCalc < 2.8){
+        valB = bCalc.toFixed(2);
+      }
+    }
+  }
+  document.getElementById('anValorB').textContent = valB;
+
   if(datos._arch){
     notaEl.textContent += t('archNota').replace('{n}', datos._arch);
   }
@@ -1779,14 +1999,17 @@ async function cargarAnalisis(){
   document.getElementById('anBody').style.display = 'block';
   dibujarDispersion(datos, dias);
   dibujarBarrasDia(datos, dias);
+  dibujarEnergia(datos, dias);
+  dibujarGutenbergRichter(datos);
 }
 
 const bandaColor = m => m>=6 ? '#e8484f' : m>=4.5 ? '#f07f3c' : m>=2.5 ? '#e8b23c' : '#3ec6a8';
 
 function prepararCanvas(id){
   const cv = document.getElementById(id);
+  if(!cv) return {c:null,w:0,h:0};
   const dpr = Math.min(devicePixelRatio,2);
-  const w = cv.clientWidth, h = parseInt(cv.getAttribute('height'));
+  const w = cv.clientWidth || 300, h = parseInt(cv.getAttribute('height')) || 150;
   cv.width = w*dpr; cv.height = h*dpr;
   const c = cv.getContext('2d'); c.scale(dpr,dpr);
   c.clearRect(0,0,w,h);
@@ -1810,6 +2033,7 @@ function ejeTiempo(c, w, h, desde, ahora, dias){
 
 function dibujarDispersion(datos, dias){
   const {c,w,h} = prepararCanvas('chMag');
+  if(!c) return;
   const ahora = Date.now(), desde = ahora - dias*86400e3;
   const magTop = Math.max(6.5, ...datos.map(d=>d.mag+0.5));
   // eje Y
@@ -1839,6 +2063,7 @@ function dibujarDispersion(datos, dias){
 
 function dibujarBarrasDia(datos, dias){
   const {c,w,h} = prepararCanvas('chDia');
+  if(!c) return;
   const ahora = Date.now(), desde = ahora - dias*86400e3;
   const nB = dias<=1 ? 24 : dias;           // 24 h → barras por hora
   const buckets = Array.from({length:nB}, ()=>({b1:0,b2:0,b3:0,b4:0}));
@@ -1873,6 +2098,87 @@ function dibujarBarrasDia(datos, dias){
   c.fillStyle='#5a6a7c'; c.font='9px JetBrains Mono, monospace';
   c.fillText(maxT, 6, 14);
   ejeTiempo(c, w, h, desde, ahora, dias);
+}
+
+function dibujarEnergia(datos, dias){
+  const {c,w,h} = prepararCanvas('chEnergia');
+  if(!c || !datos.length) return;
+  const ahora = Date.now(), desde = ahora - dias*86400e3;
+  const ord = datos.slice().sort((a,b)=>a.time-b.time);
+  let acum = 0;
+  const pts = [];
+  ord.forEach(d => {
+    acum += Math.pow(10, 4.8 + 1.5 * d.mag);
+    pts.push({ time: d.time, e: acum });
+  });
+  const maxE = acum || 1;
+
+  c.fillStyle='#5a6a7c'; c.font='9px JetBrains Mono, monospace';
+  c.fillText('100%', 6, 14);
+  c.fillText('50%', 6, (h-20)/2 + 4);
+  c.fillText('0%', 6, h-18);
+  ejeTiempo(c, w, h, desde, ahora, dias);
+
+  c.beginPath();
+  c.moveTo(34, h-18);
+  pts.forEach(p => {
+    const x = 34 + (p.time - desde) / (ahora - desde) * (w - 44);
+    if(x < 34) return;
+    const y = (h - 20) - (p.e / maxE) * (h - 32);
+    c.lineTo(x, y);
+  });
+  c.strokeStyle = '#f07f3c';
+  c.lineWidth = 2.5;
+  c.stroke();
+
+  c.lineTo(w - 10, h - 18);
+  c.lineTo(34, h - 18);
+  const gr = c.createLinearGradient(0, 0, 0, h);
+  gr.addColorStop(0, 'rgba(240,127,60,0.25)');
+  gr.addColorStop(1, 'rgba(240,127,60,0.0)');
+  c.fillStyle = gr;
+  c.fill();
+}
+
+function dibujarGutenbergRichter(datos){
+  const {c,w,h} = prepararCanvas('chGr');
+  if(!c || datos.length < 5) return;
+  const mags = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0];
+  const counts = mags.map(m => datos.filter(d => d.mag >= m).length).filter(n => n > 0);
+  const validMags = mags.slice(0, counts.length);
+  const logCounts = counts.map(n => Math.log10(n));
+  const maxLog = Math.max(...logCounts, 1);
+
+  c.fillStyle='#5a6a7c'; c.font='9px JetBrains Mono, monospace';
+  for(let i = 0; i <= 3; i++){
+    const val = Math.round(Math.pow(10, (maxLog * i / 3)));
+    const y = (h - 20) - (i / 3) * (h - 32);
+    c.strokeStyle='#1a2430'; c.beginPath(); c.moveTo(34,y); c.lineTo(w-8,y); c.stroke();
+    c.fillText(val >= 1000 ? (val/1000).toFixed(0)+'k' : String(val), 6, y+3);
+  }
+
+  validMags.forEach((m, i) => {
+    const x = 34 + (i / (validMags.length - 1 || 1)) * (w - 44);
+    c.fillText('M'+m.toFixed(1), x - 10, h - 4);
+  });
+
+  c.beginPath();
+  logCounts.forEach((lc, i) => {
+    const x = 34 + (i / (validMags.length - 1 || 1)) * (w - 44);
+    const y = (h - 20) - (lc / maxLog) * (h - 32);
+    if(i === 0) c.moveTo(x, y); else c.lineTo(x, y);
+  });
+  c.strokeStyle = '#3ec6a8';
+  c.lineWidth = 2;
+  c.stroke();
+
+  logCounts.forEach((lc, i) => {
+    const x = 34 + (i / (validMags.length - 1 || 1)) * (w - 44);
+    const y = (h - 20) - (lc / maxLog) * (h - 32);
+    c.beginPath(); c.arc(x, y, 4, 0, 7);
+    c.fillStyle = '#3ec6a8'; c.fill();
+    c.strokeStyle = '#0b0f14'; c.lineWidth = 1.5; c.stroke();
+  });
 }
 
 /* ================= mapa satelital ================= */
@@ -2069,6 +2375,38 @@ document.getElementById('satZoomOut').addEventListener('click', ()=>satMapa && s
 document.getElementById('satCentrar').addEventListener('click', ()=>{
   if(satYo) satMapa.setView(satYo.getLatLng(), 14);
 });
+
+let satHeatLayer = null, satHeatActivo = false;
+async function toggleSatHeat(){
+  if(!satMapa) return;
+  satHeatActivo = !satHeatActivo;
+  const btn = document.getElementById('satHeatBtn');
+  if(btn) btn.style.color = satHeatActivo ? '#e8484f' : 'inherit';
+
+  if(!satHeatActivo){
+    if(satHeatLayer){ satMapa.removeLayer(satHeatLayer); satHeatLayer = null; }
+    return;
+  }
+
+  if(typeof L.heatLayer === 'undefined'){
+    await new Promise(res => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+      s.onload = res;
+      document.head.appendChild(s);
+    });
+  }
+
+  const pts = quakes.map(q => [q.lat, q.lon, Math.pow(q.mag, 1.8) / 20]);
+  satHeatLayer = L.heatLayer(pts, {
+    radius: 26,
+    blur: 20,
+    maxZoom: 12,
+    gradient: { 0.2: '#3ec6a8', 0.4: '#e8b23c', 0.7: '#f07f3c', 1.0: '#e8484f' }
+  }).addTo(satMapa);
+}
+document.getElementById('satHeatBtn').addEventListener('click', toggleSatHeat);
+
 document.getElementById('satCapaBtn').addEventListener('click', ()=>{
   if(!satMapa) return;
   const orden = ['mapa','esri','nasa'];
@@ -3892,6 +4230,107 @@ animate();
 fetchQuakes();
 setInterval(fetchQuakes, REFRESH_MS);
 
+/* ================= Supabase Realtime (WebSockets) ================= */
+let supabaseClient = null;
+function iniciarSupabaseRealtime(){
+  if(!SUPABASE_URL || !SUPABASE_ANON_KEY || typeof supabase === 'undefined') return;
+  try{
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    // Suscripción a sismos nuevos en vivo
+    supabaseClient
+      .channel('sismos-vivos')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sismos' }, payload => {
+        const n = payload.new;
+        if(!n || !n.id) return;
+        const nuevo = {
+          id: n.id,
+          src: n.fuente || 'LIVE',
+          mag: Number(n.magnitud),
+          place: n.lugar || '—',
+          time: new Date(n.fecha_hora_utc).getTime(),
+          lat: Number(n.lat),
+          lon: Number(n.lon),
+          depth: Number(n.profundidad_km) || 0,
+          url: n.url || '',
+          tsunami: !!n.tsunami,
+          pager: n.pager,
+          felt: n.felt
+        };
+        
+        if(allQuakes.some(x => x.id === nuevo.id)) return;
+        allQuakes.unshift(nuevo);
+        aplicarFiltros();
+        renderStats();
+        renderTimeline();
+        crearMarcadores();
+        
+        animarNuevoSismo(nuevo);
+      })
+      .subscribe();
+
+    // Suscripción a reportes ciudadanos en vivo
+    supabaseClient
+      .channel('reportes-vivos')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reportes_sentidos' }, payload => {
+        const rep = payload.new;
+        if(rep && selectedQ && rep.sismo_id === selectedQ.id){
+          actualizarContadorFelt(selectedQ.id);
+        }
+      })
+      .subscribe();
+  }catch(e){
+    console.warn('Realtime Supabase:', e);
+  }
+}
+
+function animarNuevoSismo(q){
+  const st = document.getElementById('status');
+  if(st){
+    st.textContent = `⚡ SISMO EN VIVO: M ${q.mag.toFixed(1)} · ${q.place}`;
+    st.classList.add('on');
+    setTimeout(() => st.classList.remove('on'), 9000);
+  }
+
+  if(satMapa && document.getElementById('satmapa').classList.contains('on')){
+    const circ = L.circle([q.lat, q.lon], {
+      radius: 5000,
+      color: '#e8484f',
+      fillColor: '#e8484f',
+      fillOpacity: 0.6,
+      weight: 3
+    }).addTo(satMapa);
+    let r = 5000;
+    const anim = setInterval(()=>{
+      r += 15000;
+      circ.setRadius(r);
+      circ.setStyle({ fillOpacity: Math.max(0, 0.6 - r/300000), opacity: Math.max(0, 1 - r/300000) });
+      if(r > 300000){ clearInterval(anim); satMapa.removeLayer(circ); }
+    }, 50);
+  }
+
+  const chkS = document.getElementById('alSonido');
+  if(chkS && chkS.checked){
+    try{
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.6);
+    }catch(e){}
+  }
+}
+
+// Iniciar Realtime de inmediato
+iniciarSupabaseRealtime();
+
 // Precarga silenciosa de Leaflet para alternancia instantánea sin espera de red
 if('requestIdleCallback' in window){
   requestIdleCallback(()=>cargarLeaflet(()=>{}));
@@ -3899,7 +4338,7 @@ if('requestIdleCallback' in window){
   setTimeout(()=>cargarLeaflet(()=>{}), 1500);
 }
 
-/* ================= PWA ================= */
+/* ================= PWA & Web Push ================= */
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   addEventListener('load', ()=>{
     navigator.serviceWorker.register('sw.js').catch(()=>{ /* sin SW la web funciona igual */ });
