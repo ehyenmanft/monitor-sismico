@@ -27,7 +27,7 @@ interface SismoItem {
 
 // Configuración y criterios de alerta
 const CONFIG = {
-  CANAL_VEN_MAG_MIN: 3.0,
+  CANAL_VEN_MAG_MIN: 2.6,
   CANAL_MUNDO_MAG_MIN: 7.0,
   CANAL_CON_IMAGEN: true,
   CANAL_CON_MAPA: true,

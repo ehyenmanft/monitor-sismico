@@ -2304,6 +2304,17 @@ function generarTarjeta(q, formato = 'historia'){
 }
 
 /* ================= reportes comunitarios (¿Lo sentiste?) ================= */
+function calcularDistanciaFelt(lat1, lon1, lat2, lon2){
+  if(lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+
 async function enviarReporteFelt(intensidad, mmi){
   const q = selectedQ || allQuakes.find(x=>x.id===selectedId);
   if(!q) return;
@@ -2314,13 +2325,64 @@ async function enviarReporteFelt(intensidad, mmi){
   msg.textContent = 'Enviando reporte…';
 
   try{
-    let lat = null, lon = null;
+    let lat = null, lon = null, ciudad = null;
+
+    // 1. Intentar GPS del navegador (con timeout de 3.5s)
     if(navigator.geolocation){
       try {
-        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 }));
-        lat = pos.coords.latitude;
-        lon = pos.coords.longitude;
-      }catch(e){}
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 3500, maximumAge: 60000 })
+        );
+        lat = Number(pos.coords.latitude.toFixed(4));
+        lon = Number(pos.coords.longitude.toFixed(4));
+      }catch(_e){}
+    }
+
+    // 2. Si GPS no respondió, resolver ubicación aproximada por IP para no dejar campos en NULL
+    if(lat == null || lon == null){
+      try {
+        const ipRes = await Promise.race([
+          fetch('https://freeipapi.com/api/json'),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2500))
+        ]);
+        if(ipRes.ok){
+          const ipData = await ipRes.json();
+          if(ipData && ipData.latitude && ipData.longitude){
+            lat = Number(parseFloat(ipData.latitude).toFixed(4));
+            lon = Number(parseFloat(ipData.longitude).toFixed(4));
+            ciudad = ipData.cityName || ipData.regionName || null;
+          }
+        }
+      }catch(_e){}
+    }
+
+    // 3. Si hay coordenadas pero no ciudad, resolver nombre con reverse geocoding
+    if(lat != null && lon != null && !ciudad){
+      try {
+        const geoRes = await Promise.race([
+          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=es`),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 2000))
+        ]);
+        if(geoRes.ok){
+          const geoData = await geoRes.json();
+          ciudad = geoData.locality || geoData.city || geoData.principalSubdivision || null;
+        }
+      }catch(_e){}
+    }
+
+    // 4. Calcular distancia al epicentro
+    const qLat = q.lat != null ? q.lat : (q.coords ? q.coords[1] : null);
+    const qLon = q.lon != null ? q.lon : (q.coords ? q.coords[0] : null);
+    const dist = (lat != null && lon != null && qLat != null && qLon != null)
+      ? calcularDistanciaFelt(lat, lon, qLat, qLon)
+      : null;
+
+    let ciudadTexto = ciudad ? String(ciudad).trim() : null;
+    if(dist != null){
+      ciudadTexto = ciudadTexto ? `${ciudadTexto} (~${dist} km del sismo)` : `A ~${dist} km del sismo`;
+    }
+    if(!ciudadTexto && (q.place || q.lugar)){
+      ciudadTexto = `Cerca de ${q.place || q.lugar}`;
     }
 
     if(SUPABASE_URL && SUPABASE_ANON_KEY){
@@ -2336,11 +2398,14 @@ async function enviarReporteFelt(intensidad, mmi){
           intensidad: intensidad,
           intensidad_mmi: mmi,
           lat: lat,
-          lon: lon
+          lon: lon,
+          ciudad: ciudadTexto
         })
       });
     }
-    msg.textContent = '¡Reporte registrado! Gracias por colaborar.';
+    msg.textContent = dist != null 
+      ? `¡Reporte registrado (~${dist} km del epicentro)! Gracias por colaborar.`
+      : '¡Reporte registrado! Gracias por colaborar.';
     actualizarContadorFelt(q.id);
   }catch(e){
     msg.textContent = 'Reporte procesado localmente.';

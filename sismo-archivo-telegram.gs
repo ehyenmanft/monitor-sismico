@@ -51,7 +51,7 @@ var CONFIG = {
   TELEGRAM_CHAT_ID: '',
 
   // --- Criterios de publicación en el CANAL ---
-  CANAL_VEN_MAG_MIN: 3.0,      // sismos dentro de ZONA_LOCAL (ver abajo)
+  CANAL_VEN_MAG_MIN: 2.6,      // sismos dentro de ZONA_LOCAL (ver abajo)
   CANAL_MUNDO_MAG_MIN: 7.0,    // fuera de la zona: solo grandes terremotos.
                                // Se deja en 7.0 (y no en 99) a propósito: un M7+
                                // en la fosa de Puerto Rico o el Atlántico puede
