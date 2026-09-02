@@ -751,6 +751,49 @@ body.ocultarT #timeline{display:none}
   70%{box-shadow:0 0 0 16px rgba(232,72,79,0)}
   100%{box-shadow:0 0 0 0 rgba(232,72,79,0)}
 }
+
+/* Ondas e Isoseistas 2D ultra-optimizadas por GPU */
+.seismic-shockwave{position:relative;pointer-events:none}
+.sw-ring{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;border:2px solid #f07f3c;
+  pointer-events:none;opacity:0;
+  will-change:transform,opacity;
+  animation:swPulse 2.8s cubic-bezier(0.1, 0.7, 0.2, 1) infinite;
+}
+.sw-ring.r1{width:30px;height:30px}
+.sw-ring.r2{width:30px;height:30px;animation-delay:0.95s}
+@keyframes swPulse{
+  0%{transform:translate(-50%,-50%) scale(0.15);opacity:0.95;border-width:3px}
+  60%{opacity:0.45}
+  100%{transform:translate(-50%,-50%) scale(7.5);opacity:0;border-width:1px}
+}
+.city-prox-badge{
+  background:rgba(12,17,23,0.92);
+  border:1px solid var(--line);
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:9.5px;
+  padding:2px 6px;
+  border-radius:5px;
+  backdrop-filter:blur(4px);
+  white-space:nowrap;
+  box-shadow:0 3px 8px rgba(0,0,0,0.6);
+  pointer-events:none;
+}
+.city-prox-badge b{color:var(--accent);font-weight:700}
+.iso-badge{
+  background:rgba(14,20,27,0.85);
+  color:var(--muted);
+  font-family:'JetBrains Mono',monospace;
+  font-size:8.5px;
+  padding:1px 5px;
+  border-radius:4px;
+  border:1px solid rgba(255,255,255,0.1);
+  white-space:nowrap;
+  pointer-events:none;
+}
 </style>
 </head>
 <body>
@@ -1456,6 +1499,7 @@ function cerrarDetail(){
   if(det) det.classList.remove('on');
   selectedId = null;
   selectedQ = null;
+  if(satIsoseistas) satIsoseistas.clearLayers();
   flyTarget = null;   // desancla la cámara para permitir rotar y manipular el globo libremente
   try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
   document.querySelectorAll('.quake.sel').forEach(el=>el.classList.remove('sel'));
@@ -1543,7 +1587,10 @@ function selectQuake(q, fly){
   try{ history.replaceState(null,'','#evento='+encodeURIComponent(q.id)); }catch(e){}
   if(esMovil()) cerrarHojas();
   autoAjustarDetail();
-  if(satMapa && document.getElementById('satmapa').classList.contains('on')){ satMapa.setView([q.lat,q.lon], 9); }
+  if(satMapa && document.getElementById('satmapa').classList.contains('on')){
+    satMapa.setView([q.lat,q.lon], Math.max(satMapa.getZoom(), 8));
+    pintarOndasIsoseistas(q);
+  }
   if(fly!==false) flyTo(q.lat, q.lon);
 }
 
@@ -2232,7 +2279,112 @@ function dibujarGutenbergRichter(datos){
 /* ================= mapa satelital ================= */
 let satMapa=null, satCapa=null, satWatch=null, satYo=null, satYoCirc=null, leafletListo=false;
 let satCapaEsri=null, satCapaNasa=null, satCapaMapa=null, satCapaActual='mapa';
-let satPlacas=null, satTrazo=null;
+let satPlacas=null, satTrazo=null, satIsoseistas=null;
+
+const CIUDADES_REF = [
+  {n:'Caracas', lat:10.4806, lon:-66.9036},
+  {n:'La Guaira', lat:10.6000, lon:-66.9333},
+  {n:'Los Teques', lat:10.3444, lon:-67.0431},
+  {n:'Guatire', lat:10.4744, lon:-66.5414},
+  {n:'Higuerote', lat:10.4853, lon:-66.1025},
+  {n:'Maracay', lat:10.2469, lon:-67.5958},
+  {n:'Valencia', lat:10.1620, lon:-68.0077},
+  {n:'Puerto Cabello', lat:10.4731, lon:-68.0125},
+  {n:'San Juan de los Morros', lat:9.9115, lon:-67.3538},
+  {n:'Barquisimeto', lat:10.0678, lon:-69.3474},
+  {n:'San Felipe', lat:10.3397, lon:-68.7425},
+  {n:'Coro', lat:11.4045, lon:-69.6734},
+  {n:'Punto Fijo', lat:11.6956, lon:-70.1997},
+  {n:'Maracaibo', lat:10.6427, lon:-71.6125},
+  {n:'Cabimas', lat:10.3986, lon:-71.4428},
+  {n:'Valera', lat:9.3178, lon:-70.6036},
+  {n:'Mérida', lat:8.5983, lon:-71.1450},
+  {n:'San Cristóbal', lat:7.7669, lon:-72.2250},
+  {n:'Barcelona', lat:10.1363, lon:-64.6862},
+  {n:'Puerto La Cruz', lat:10.2138, lon:-64.6328},
+  {n:'Cumaná', lat:10.4539, lon:-64.1826},
+  {n:'Carúpano', lat:10.6678, lon:-63.2585},
+  {n:'Güiria', lat:10.5778, lon:-62.2964},
+  {n:'Maturín', lat:9.7457, lon:-63.1764},
+  {n:'El Tigre', lat:8.8875, lon:-64.2454},
+  {n:'Ciudad Bolívar', lat:8.1292, lon:-63.5408},
+  {n:'Ciudad Guayana', lat:8.3537, lon:-62.6511},
+  {n:'Porlamar', lat:10.9577, lon:-63.8697},
+  {n:'Bogotá', lat:4.7110, lon:-74.0721},
+  {n:'Cúcuta', lat:7.8939, lon:-72.5078},
+  {n:'Bucaramanga', lat:7.1254, lon:-73.1198},
+  {n:'Port of Spain', lat:10.6549, lon:-61.5019},
+  {n:'Willemstad', lat:12.1224, lon:-68.9335}
+];
+
+function pintarOndasIsoseistas(q){
+  if(!satIsoseistas) return;
+  satIsoseistas.clearLayers();
+  if(!q || !satMapa) return;
+
+  const M = q.mag || 0;
+  const col = magCss(M);
+
+  // 1. Radios geofísicos de intensidad / percepción (en metros)
+  const r1 = Math.max(1800, Math.round(Math.pow(10, 0.43 * M - 1.1) * 1000));
+  const r2 = Math.max(5000, Math.round(Math.pow(10, 0.52 * M - 0.9) * 1000));
+  const r3 = Math.max(12000, Math.round(Math.pow(10, 0.61 * M - 0.7) * 1000));
+
+  // Círculo exterior (Límite de percepción)
+  L.circle([q.lat, q.lon], {
+    radius: r3, color: '#e8b23c', weight: 1, dashArray: '3,5',
+    fillColor: '#e8b23c', fillOpacity: 0.03, pane: 'paneIsoseistas', interactive: false
+  }).addTo(satIsoseistas);
+
+  // Círculo intermedio (Percepción clara)
+  L.circle([q.lat, q.lon], {
+    radius: r2, color: '#f07f3c', weight: 1.2, dashArray: '4,4',
+    fillColor: '#f07f3c', fillOpacity: 0.07, pane: 'paneIsoseistas', interactive: false
+  }).addTo(satIsoseistas);
+
+  // Círculo focal / epicentral
+  L.circle([q.lat, q.lon], {
+    radius: r1, color: col, weight: 2,
+    fillColor: col, fillOpacity: 0.16, pane: 'paneIsoseistas', interactive: false
+  }).addTo(satIsoseistas);
+
+  // 2. Onda expansiva sísmica animada (Hardware-accelerated CSS)
+  L.marker([q.lat, q.lon], {
+    icon: L.divIcon({
+      className: 'seismic-shockwave',
+      html: '<div class="sw-ring r1" style="border-color:'+col+'"></div><div class="sw-ring r2" style="border-color:'+col+'"></div>',
+      iconSize: [0,0]
+    }),
+    pane: 'paneIsoseistas', interactive: false
+  }).addTo(satIsoseistas);
+
+  // 3. Proximidad urbana y tiempo de arribo de onda S
+  const cercanas = CIUDADES_REF
+    .map(c => {
+      const d = distKm(q.lat, q.lon, c.lat, c.lon);
+      return { ...c, d, s: Math.max(1, Math.round(d / 3.5)) };
+    })
+    .filter(c => c.d <= 350)
+    .sort((a,b) => a.d - b.d)
+    .slice(0, 2);
+
+  cercanas.forEach(c => {
+    L.polyline([[q.lat, q.lon], [c.lat, c.lon]], {
+      color: 'rgba(255,255,255,0.4)', weight: 1.2, dashArray: '3,4',
+      pane: 'paneIsoseistas', interactive: false
+    }).addTo(satIsoseistas);
+
+    L.marker([c.lat, c.lon], {
+      icon: L.divIcon({
+        className: 'city-prox-badge',
+        html: '<b>' + c.n + '</b> · ' + Math.round(c.d) + ' km <span style="color:#f07f3c">(Onda S ~' + c.s + 's)</span>',
+        iconSize: [0,0],
+        iconAnchor: [-6, 6]
+      }),
+      pane: 'paneIsoseistas', interactive: false
+    }).addTo(satIsoseistas);
+  });
+}
 
 function cargarLeaflet(cb){
   if(leafletListo){ cb(); return; }
@@ -2256,7 +2408,10 @@ function abrirSat(capa){
   cerrarPaneles('sat');
   if(capa) satCapaActual = capa;
   document.getElementById('satmapa').classList.add('on');
-  cargarLeaflet(iniciarSat);
+  cargarLeaflet(()=>{
+    iniciarSat();
+    if(selectedQ) pintarOndasIsoseistas(selectedQ);
+  });
 }
 
 /* deja visible solo la capa activa, siempre por debajo de los marcadores */
@@ -2292,12 +2447,13 @@ function iniciarSat(){
       attribution: 'Imagen de ' + ayer + ' © NASA EOSDIS GIBS'
     });
     /* Orden de dibujo mediante paneles de Leaflet: las placas por debajo,
-       los sismos encima y el trazo manual al frente. (L.layerGroup NO tiene
-       bringToBack/bringToFront: llamarlos lanza una excepción.) */
+       isoseistas y ondas intermedias, sismos encima y trazo manual al frente */
     satMapa.createPane('panePlacas').style.zIndex = 390;
-    satMapa.createPane('paneSismos').style.zIndex = 410;
+    satMapa.createPane('paneIsoseistas').style.zIndex = 405;
+    satMapa.createPane('paneSismos').style.zIndex = 415;
     satMapa.createPane('paneTrazo').style.zIndex = 430;
 
+    satIsoseistas = L.layerGroup().addTo(satMapa);
     satCapa = L.layerGroup().addTo(satMapa);
 
     /* límites de placas: se parten en el antimeridiano para que ningún
