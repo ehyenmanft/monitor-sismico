@@ -1010,12 +1010,12 @@ const PLATES = [[-0.4,-54.9,-0.0,-54.7,0.4,-54.5,1.0,-54.8,1.7,-54.4,2.4,-54.0,3
 /* ================= config ================= */
 const FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
 
-/* ── CONFIGURACIÓN FUNVISIS ─────────────────────────────────────────
-   Pega aquí la URL /exec de tu proxy de Apps Script (funvisis-proxy.gs).
-   Si se deja vacío, se usa el espejo público SismosVE directamente.
-   El orden de intento es: tu proxy → espejo SismosVE.                 */
+/* ── CONFIGURACIÓN SUPABASE ───────────────────────────────────────── */
+const SUPABASE_URL = 'https://tjzpvqhzonlajxjhwdnq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqenB2cWh6b25sYWp4amh3ZG5xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzNDI1MjYsImV4cCI6MjEwMzkxODUyNn0.C4jaGfOr6gbaP92zDVRTj9FWdNR9vcEUq2yzTffFBMs';
+
+/* ── CONFIGURACIÓN FUNVISIS / APPS SCRIPT (Fallback) ──────────────── */
 const FUNVISIS_PROXY = 'https://script.google.com/macros/s/AKfycby_pulI1B67rfThZ6vJaSd-tvu_02bD25rQqEButoHc8RPmtzRtBJSyxMkw7ghmiQxpbg/exec';
-/* mismo despliegue, ruta ?archivo=1 → catálogo histórico propio (hoja de cálculo) */
 const ARCHIVO_API = FUNVISIS_PROXY;
 const FEED_FUNVISIS_MIRROR = 'https://sismosve.rafnixg.dev/api/sismos';
 const FUNVISIS_FEEDS = [FUNVISIS_PROXY, FEED_FUNVISIS_MIRROR].filter(Boolean);
@@ -2079,8 +2079,53 @@ try{
 /* ================= archivo histórico propio ================= */
 const archCache = {};
 
-/** Lee el catálogo histórico (hoja de cálculo vía Apps Script). */
+/** Lee el catálogo histórico (Supabase REST o Google Apps Script). */
 async function fetchArchivo(opts){
+  if(SUPABASE_URL && SUPABASE_ANON_KEY){
+    try{
+      const dias = opts.dias || 30;
+      const desdeIso = new Date(Date.now() - dias * 86400e3).toISOString();
+      let queryUrl = `${SUPABASE_URL.replace(/\/$/,'')}/rest/v1/sismos?select=id,fuente,fecha_hora_utc,magnitud,lat,lon,profundidad_km,lugar,url`;
+      
+      if(opts.id){
+        queryUrl += `&id=eq.${encodeURIComponent(opts.id)}`;
+      } else {
+        queryUrl += `&fecha_hora_utc=gte.${encodeURIComponent(desdeIso)}`;
+        if(opts.minmag) queryUrl += `&magnitud=gte.${opts.minmag}`;
+        if(opts.fuente) queryUrl += `&fuente=eq.${encodeURIComponent(opts.fuente)}`;
+        queryUrl += '&order=fecha_hora_utc.desc&limit=12000';
+      }
+
+      if(archCache[queryUrl]) return archCache[queryUrl];
+
+      const r = await fetch(queryUrl, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+      if(r.ok){
+        const rows = await r.json();
+        const lista = rows.map(f=>({
+          id: f.id,
+          src: f.fuente,
+          time: new Date(f.fecha_hora_utc).getTime(),
+          mag: Number(f.magnitud),
+          lat: Number(f.lat),
+          lon: Number(f.lon),
+          depth: Number(f.profundidad_km) || 0,
+          place: f.lugar || '—',
+          url: f.url || (f.fuente==='FUNVISIS' ? 'http://www.funvisis.gob.ve' : '')
+        })).filter(q=>isFinite(q.lat)&&isFinite(q.lon)&&q.mag>0&&q.time);
+        archCache[queryUrl] = lista;
+        return lista;
+      }
+    }catch(errSupabase){
+      console.warn('Fallback al proxy tradicional por error en Supabase:', errSupabase);
+    }
+  }
+
+  // Fallback tradicional (Google Apps Script)
   const p = new URLSearchParams({archivo:'1'});
   if(opts.dias)   p.set('dias', opts.dias);
   if(opts.minmag) p.set('minmag', opts.minmag);
@@ -2092,7 +2137,6 @@ async function fetchArchivo(opts){
   const r = await fetch(url);
   if(!r.ok) throw new Error('archivo '+r.status);
   const j = await r.json();
-  // filas compactas: [id, fuente, t, mag, lat, lon, prof, lugar]
   const lista = (j.rows||[]).map(f=>({
     id:f[0], src:f[1], time:f[2], mag:f[3],
     lat:f[4], lon:f[5], depth:f[6], place:f[7],
@@ -3572,6 +3616,36 @@ function paisDeLugar(txt){
 }
 
 async function fetchFUNVISIS(){
+  if(SUPABASE_URL && SUPABASE_ANON_KEY){
+    try{
+      const desdeIso = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
+      const r = await fetch(`${SUPABASE_URL.replace(/\/$/,'')}/rest/v1/sismos?fuente=eq.FUNVISIS&fecha_hora_utc=gte.${encodeURIComponent(desdeIso)}&order=fecha_hora_utc.desc&limit=100`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        }
+      });
+      if(r.ok){
+        const rows = await r.json();
+        if(rows && rows.length){
+          return rows.map(f=>({
+            id: f.id,
+            src: 'FUNVISIS',
+            mag: Number(f.magnitud),
+            place: f.lugar || '—',
+            time: new Date(f.fecha_hora_utc).getTime(),
+            lat: Number(f.lat),
+            lon: Number(f.lon),
+            depth: Number(f.profundidad_km) || 0,
+            url: f.url || 'http://www.funvisis.gob.ve'
+          })).filter(q=>!isNaN(q.lat)&&!isNaN(q.lon)&&q.mag>0&&q.time!=null);
+        }
+      }
+    }catch(errSupabase){
+      console.warn('Fallback a proxy FUNVISIS por error en Supabase:', errSupabase);
+    }
+  }
+
   let data = null, lastErr = null;
   for(const feed of FUNVISIS_FEEDS){
     try{

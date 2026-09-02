@@ -94,7 +94,7 @@ var EXCLUIR_NIDO = {minlat: 6.0, maxlat: 7.6, minlon: -74.2, maxlon: -72.4};
 var EXCLUIR_NIDO_BAJO = 4.5;
 
 var URL_USGS = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
-var URL_EMSC = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=800&starttime=';
+var URL_EMSC = 'https://www.seismicportal.eu/fdsnws/event/1/query?format=json&limit=100&starttime=';
 
 /* FUNVISIS describe cada sismo respecto a la ciudad más cercana, que a veces
    está fuera de Venezuela (Bucaramanga, Santa Marta, Barbados, Bonaire...).
@@ -117,30 +117,38 @@ function paisDeLugar_(txt) {
 /* ================= función principal (la del trigger) ================= */
 
 function vigilarSismos() {
+  var tiempoInicio = Date.now();
   var eventos = [];
 
   // FUNVISIS — reutiliza las funciones del archivo funvisis-proxy.gs
   try {
-    var fv = normalizar(obtenerDatos(false));
-    (fv.features || []).forEach(function (f) {
-      var p = f.properties;
-      var t = new Date(convertirFechaVE_(p.date, p.time));
-      if (isNaN(t.getTime())) return;
-      eventos.push({
-        id: 'fv-' + p.date + '-' + p.time + '-' + p.lat + '-' + p.long,
-        fuente: 'FUNVISIS',
-        t: t,
-        mag: parseFloat(p.value),
-        lat: parseFloat(p.lat),
-        lon: parseFloat(p.long),
-        prof: parseFloat(p.depth) || 0,
-        lugar: (function () {
-          var l = p.addressFormatted || '—';
-          return l + ', ' + paisDeLugar_(l);
-        })()
+    var rawFV = obtenerDatos(false);
+    var fv = normalizar(rawFV);
+    var fvOk = !(rawFV.via && rawFV.via.indexOf('error') === 0);
+
+    if (fvOk && fv.features && fv.features.length) {
+      fv.features.forEach(function (f) {
+        var p = f.properties;
+        var t = convertirFechaVE_(p.date, p.time);
+        if (!t || isNaN(t.getTime())) return;
+        eventos.push({
+          id: 'fv-' + (p.date || '').replace(/[\/\s:]/g, '') + '-' + (p.time || '').replace(/[:\s]/g, '') + '-' + (p.lat || '') + '-' + (p.long || ''),
+          fuente: 'FUNVISIS',
+          t: t,
+          mag: parseFloat(p.value),
+          lat: parseFloat(p.lat),
+          lon: parseFloat(p.long),
+          prof: parseFloat(p.depth) || 0,
+          lugar: (function () {
+            var l = p.addressFormatted || '—';
+            return l + ', ' + paisDeLugar_(l);
+          })()
+        });
       });
-    });
-    saludRegistrar_('funvisis', true);
+      saludRegistrar_('funvisis', true);
+    } else {
+      saludRegistrar_('funvisis', false, rawFV.via || 'Sin eventos');
+    }
   } catch (err) {
     Logger.log('FUNVISIS falló: ' + err);
     saludRegistrar_('funvisis', false, String(err));
@@ -162,9 +170,9 @@ function vigilarSismos() {
           lon: f.geometry.coordinates[0],
           prof: f.geometry.coordinates[2] || 0,
           lugar: f.properties.place || '—',
-          tsunami: f.properties.tsunami === 1,   // hay información de tsunami asociada
-          pager: f.properties.alert || null,     // impacto estimado: green/yellow/orange/red
-          felt: f.properties.felt || null        // reportes de personas que lo sintieron
+          tsunami: f.properties.tsunami === 1,
+          pager: f.properties.alert || null,
+          felt: f.properties.felt || null
         });
       });
       saludRegistrar_('usgs', true);
@@ -176,10 +184,9 @@ function vigilarSismos() {
     saludRegistrar_('usgs', false, String(err));
   }
 
-  // EMSC — tercera red: cubre el Caribe y a menudo detecta eventos costa afuera
-  // que USGS no cataloga. Su ausencia aquí fue la causa de alertas perdidas.
+  // EMSC — ventana de 12 horas y límite de 100 para no agotar memoria ni tiempo
   try {
-    var desdeIso = Utilities.formatDate(new Date(Date.now() - 86400000),
+    var desdeIso = Utilities.formatDate(new Date(Date.now() - 12 * 3600000),
                                         'UTC', "yyyy-MM-dd'T'HH:mm:ss");
     var re = UrlFetchApp.fetch(URL_EMSC + desdeIso, { muteHttpExceptions: true });
     if (re.getResponseCode() === 200) {
@@ -199,7 +206,7 @@ function vigilarSismos() {
         });
       });
       saludRegistrar_('emsc', true);
-    } else if (re.getResponseCode() !== 204) {   // 204 = sin eventos, no es fallo
+    } else if (re.getResponseCode() !== 204) {
       saludRegistrar_('emsc', false, 'HTTP ' + re.getResponseCode());
     }
   } catch (err) {
@@ -209,61 +216,132 @@ function vigilarSismos() {
 
   if (!eventos.length) { Logger.log('Sin datos de ninguna fuente.'); return; }
 
-  // detectar eventos no vistos
   var props = PropertiesService.getScriptProperties();
+  var primeraVez = props.getProperty('inicializado') !== '1';
+  var ahora = Date.now();
+
+  // 1) Memoria de sismos YA publicados en Telegram (deduplicación persistente)
+  var publicadosTelegram = [];
+  try {
+    var rawPub = props.getProperty('telegram_publicados');
+    if (rawPub) publicadosTelegram = JSON.parse(rawPub);
+  } catch (ePub) {
+    publicadosTelegram = [];
+  }
+
+  function yaFuePublicadoEnTelegram_(e) {
+    var eTime = e.t.getTime();
+    for (var i = 0; i < publicadosTelegram.length; i++) {
+      var p = publicadosTelegram[i];
+      if (p.id === e.id) return true;
+      // Mismo sismo físico reportado por otra red o con desfase de minutos
+      if (Math.abs(p.t - eTime) <= 20 * 60 * 1000 &&
+          Math.abs(p.lat - e.lat) <= 0.6 &&
+          Math.abs(p.lon - e.lon) <= 0.6) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function registrarPublicadoTelegram_(e) {
+    publicadosTelegram.push({
+      id: e.id,
+      t: e.t.getTime(),
+      lat: e.lat,
+      lon: e.lon,
+      mag: e.mag,
+      enviadoEn: Date.now()
+    });
+    if (publicadosTelegram.length > 50) {
+      publicadosTelegram = publicadosTelegram.slice(publicadosTelegram.length - 50);
+    }
+    try {
+      props.setProperty('telegram_publicados', JSON.stringify(publicadosTelegram));
+    } catch (eSave) {}
+  }
+
+  // 2) Gestión de IDs vistos para el archivo histórico (Google Sheets)
   var vistos = [];
-  try { vistos = JSON.parse(props.getProperty('ids_vistos') || '[]'); } catch (e) {}
+  try {
+    var rawVistos = props.getProperty('ids_vistos');
+    if (rawVistos) vistos = JSON.parse(rawVistos);
+  } catch (e) {
+    vistos = [];
+  }
   var setVistos = {};
   vistos.forEach(function (id) { setVistos[id] = true; });
 
   var nuevos = eventos.filter(function (e) { return !setVistos[e.id]; });
 
-  // primera ejecución: registrar el histórico sin alertar
-  var primeraVez = props.getProperty('inicializado') !== '1';
-
+  // Archivar en Google Sheets (solo eventos nuevos)
   if (nuevos.length) {
-    // archivar
     var aGuardar = CONFIG.ARCHIVAR_TODO ? nuevos : nuevos.filter(cumpleCriterios_);
     if (aGuardar.length) archivar_(aGuardar);
-
-    // publicar y alertar (nunca en la primera ejecución)
-    if (!primeraVez) {
-      // 1) CANAL público: sismos relevantes, con validación cruzada entre fuentes
-      var yaPublicados = [];
-      nuevos.filter(esParaCanal_)
-            .sort(function (a, b) { return b.mag - a.mag; })
-            .filter(function (e) {
-              // el mismo sismo puede llegar por dos o tres redes: publicar una vez
-              for (var i = 0; i < yaPublicados.length; i++) {
-                var o = yaPublicados[i];
-                if (Math.abs(o.t.getTime() - e.t.getTime()) < 10 * 60 * 1000 &&
-                    Math.abs(o.lat - e.lat) < 0.5 && Math.abs(o.lon - e.lon) < 0.5) return false;
-              }
-              yaPublicados.push(e);
-              return true;
-            })
-            .slice(0, 4)
-            .forEach(function (e) {
-              publicarEnCanal_(e, cruzarFuentes_(e, eventos));
-            });
-
-      // 2) Alerta PRIVADA (si configuraste un chat personal)
-      if (CONFIG.TELEGRAM_CHAT_ID) {
-        nuevos.filter(cumpleCriterios_)
-              .sort(function (a, b) { return b.mag - a.mag; })
-              .slice(0, 5)
-              .forEach(function (e) { enviarTelegram_(e, CONFIG.TELEGRAM_CHAT_ID); });
-      }
-    }
   }
 
-  // actualizar memoria de ids (mantener los últimos 4000)
-  nuevos.forEach(function (e) { vistos.push(e.id); });
-  if (vistos.length > 4000) vistos = vistos.slice(vistos.length - 4000);
-  props.setProperty('ids_vistos', JSON.stringify(vistos));
-  props.setProperty('inicializado', '1');
+  // 3) Publicación en Telegram (Canal y Privado)
+  if (!primeraVez) {
+    // Filtrar candidatos para el canal:
+    // - Ocurridos en las últimas 2.5 horas (no alertar por sismos antiguos del feed)
+    // - Cumplen magnitud y zona
+    // - NO han sido publicados antes (por ninguna red)
+    var paraCanal = eventos.filter(function (e) {
+      if (ahora - e.t.getTime() > 2.5 * 3600 * 1000) return false;
+      if (!esParaCanal_(e)) return false;
+      if (yaFuePublicadoEnTelegram_(e)) return false;
+      return true;
+    }).sort(function (a, b) { return b.mag - a.mag; });
 
-  // registrar el evento más reciente de cada red (para detectar silencios)
+    // Deduplicación dentro de la misma tanda y envío
+    var enviadosEnEstaTanda = [];
+    paraCanal.forEach(function (e) {
+      for (var i = 0; i < enviadosEnEstaTanda.length; i++) {
+        var o = enviadosEnEstaTanda[i];
+        if (Math.abs(o.t.getTime() - e.t.getTime()) <= 20 * 60 * 1000 &&
+            Math.abs(o.lat - e.lat) <= 0.6 && Math.abs(o.lon - e.lon) <= 0.6) {
+          return;
+        }
+      }
+      if (enviadosEnEstaTanda.length < 3) {
+        publicarEnCanal_(e, cruzarFuentes_(e, eventos));
+        registrarPublicadoTelegram_(e);
+        enviadosEnEstaTanda.push(e);
+      }
+    });
+
+    // Alertas Privadas
+    if (CONFIG.TELEGRAM_CHAT_ID) {
+      var paraPrivado = eventos.filter(function (e) {
+        if (ahora - e.t.getTime() > 2.5 * 3600 * 1000) return false;
+        if (!cumpleCriterios_(e)) return false;
+        if (yaFuePublicadoEnTelegram_(e)) return false;
+        return true;
+      }).sort(function (a, b) { return b.mag - a.mag; });
+
+      paraPrivado.slice(0, 3).forEach(function (e) {
+        enviarTelegram_(e, CONFIG.TELEGRAM_CHAT_ID);
+        registrarPublicadoTelegram_(e);
+      });
+    }
+  } else {
+    // En la primera ejecución marcamos los eventos existentes como ya conocidos
+    eventos.forEach(function (e) {
+      if (esParaCanal_(e)) registrarPublicadoTelegram_(e);
+    });
+  }
+
+  // Actualizar memoria de IDs para la hoja de cálculo (máx 200 IDs)
+  nuevos.forEach(function (e) { vistos.push(e.id); });
+  if (vistos.length > 200) vistos = vistos.slice(vistos.length - 200);
+  try {
+    props.setProperty('ids_vistos', JSON.stringify(vistos));
+    props.setProperty('inicializado', '1');
+  } catch (errStorage) {
+    try { props.setProperty('ids_vistos', JSON.stringify(vistos.slice(-60))); } catch (e2) {}
+  }
+
+  // registrar el evento más reciente de cada red
   saludUltimoEvento_(eventos);
 
   Logger.log('Eventos: ' + eventos.length + ' · nuevos: ' + nuevos.length +
@@ -320,11 +398,35 @@ function distanciaKm_(lat1, lon1, lat2, lon2) {
 }
 
 function convertirFechaVE_(fecha, hora) {
-  // "19-07-2026" + "09:24" (hora de Venezuela, UTC-4) → ISO
-  if (!fecha) return 'invalid';
-  var p = String(fecha).split('-');
-  if (p.length !== 3) return 'invalid';
-  return p[2] + '-' + p[1] + '-' + p[0] + 'T' + (hora || '00:00') + ':00-04:00';
+  if (!fecha) return null;
+  var str = String(fecha).trim();
+  var horaStr = (hora ? String(hora).trim() : '00:00');
+  if (horaStr.length === 5) horaStr += ':00';
+
+  // Si ya viene en formato ISO completo
+  if (str.indexOf('T') !== -1) {
+    var dIso = new Date(str);
+    if (!isNaN(dIso.getTime())) return dIso;
+  }
+
+  // Formato YYYY-MM-DD o YYYY/MM/DD
+  var matchISO = str.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (matchISO) {
+    var m = matchISO[2].length === 1 ? '0' + matchISO[2] : matchISO[2];
+    var d = matchISO[3].length === 1 ? '0' + matchISO[3] : matchISO[3];
+    return new Date(matchISO[1] + '-' + m + '-' + d + 'T' + horaStr + '-04:00');
+  }
+
+  // Formato DD-MM-YYYY o DD/MM/YYYY
+  var matchVE = str.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/);
+  if (matchVE) {
+    var d2 = matchVE[1].length === 1 ? '0' + matchVE[1] : matchVE[1];
+    var m2 = matchVE[2].length === 1 ? '0' + matchVE[2] : matchVE[2];
+    return new Date(matchVE[3] + '-' + m2 + '-' + d2 + 'T' + horaStr + '-04:00');
+  }
+
+  var fallback = new Date(str + ' ' + horaStr + ' GMT-0400');
+  return isNaN(fallback.getTime()) ? null : fallback;
 }
 
 /* ================= archivo en hoja de cálculo ================= */
