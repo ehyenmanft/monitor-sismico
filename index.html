@@ -27,14 +27,15 @@
   --m4:#e8484f;   /* >= 6 */
   --accent:#f07f3c;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;overflow:hidden}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;touch-action:manipulation}
 body{
   background:var(--bg);
   color:var(--text);
   font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:13px;
 }
+button,select,a{touch-action:manipulation}
 #scene{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
 #scene.dragging{cursor:grabbing}
 
@@ -627,6 +628,9 @@ body.ocultarT #timeline{display:none}
 }
 #dmagbig{font-family:'Archivo',sans-serif;font-size:34px;font-weight:800;line-height:1;margin-bottom:8px;cursor:move;user-select:none}
 #dmagbig small{font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.1em}
+#detail .dhdr-mobile{display:none}
+#dToggleMore{display:none}
+#dDetallesExtra{display:block}
 
 /* timeline */
 #timeline{
@@ -701,11 +705,37 @@ body.ocultarT #timeline{display:none}
   #left.open,#right.open,#timeline.open{transform:translateY(0)}
 
   #detail{
-    left:8px;right:8px;bottom:64px;transform:none;
+    left:8px;right:8px;bottom:62px;transform:none;
     min-width:0;max-width:none;z-index:36;
-    background:rgba(14,20,27,0.97);
-    box-shadow:0 12px 36px rgba(0,0,0,0.8), 0 0 0 1px var(--line);
+    background:rgba(12,17,24,0.96);
+    backdrop-filter:blur(6px);
+    box-shadow:0 8px 28px rgba(0,0,0,0.85), 0 0 0 1px var(--line);
+    padding:8px 10px 8px;
+    border-radius:12px;
+    max-height:75vh;
+    overflow-y:auto;
+    touch-action:manipulation;
   }
+  #detail .dhdr-mobile{display:flex;align-items:center;gap:8px;margin-bottom:6px;padding-right:24px}
+  #detail .dhdr-mag{
+    font-family:'Archivo',sans-serif;font-size:16px;font-weight:800;
+    line-height:1;padding:4px 7px;border-radius:6px;color:#0b0f14;flex-shrink:0;
+  }
+  #detail .dhdr-info{min-width:0;flex:1}
+  #detail .dhdr-place{
+    font-size:11.5px;font-weight:700;color:var(--text);line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  #detail .dhdr-meta{
+    font-size:9.5px;color:var(--muted);margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  #detail #dmagbig{display:none}
+  #detail #dToggleMore{display:block}
+  #detail #dDetallesExtra{display:none;margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+  #detail.expandido #dDetallesExtra{display:block}
+  #detail #drowbtns{margin-top:4px;gap:6px}
+  #detail #drowbtns button{padding:6px 6px;font-size:10.5px}
   .satbtns{top:64px;right:12px !important;z-index:24}
 
   /* barra de navegación inferior */
@@ -909,34 +939,51 @@ body.ocultarT #timeline{display:none}
 
 <div class="panel" id="detail">
   <button id="dclose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg></button>
-  <div id="dmagbig">— <small>Mw</small></div>
-  <div class="drow"><span class="k" data-i18n="ubicacion">Ubicación</span><span id="dplace" style="text-align:right"></span></div>
-  <div class="drow"><span class="k" data-i18n="fechahora">Fecha / hora local</span><span id="dtime"></span></div>
-  <div class="drow"><span class="k" data-i18n="coords">Coordenadas</span><span id="dcoord"></span></div>
-  <div class="drow"><span class="k" data-i18n="profundidad">Profundidad</span><span id="ddepth"></span></div>
-  <div id="dtsunami"><b data-i18n="tsuT">⚠ INFORMACIÓN DE TSUNAMI</b><br><span data-i18n="tsuTxt">Evento en zona con posible aviso de tsunami. Consulta el boletín oficial:</span> <a href="https://www.tsunami.gov" target="_blank">tsunami.gov ↗</a></div>
-  <div class="drow" id="drowPager"><span class="k" data-i18n="pagerL">Impacto estimado (PAGER)</span><span id="dpager"></span></div>
-  <div class="drow" id="drowFelt"><span class="k" data-i18n="feltL">Reportes de personas</span><span id="dfelt"></span></div>
-  <div class="drow"><span class="k" data-i18n="fuenteL">Fuente</span><span id="dsrc"></span></div>
-  <div class="drow"><span class="k" data-i18n="ficha">Ficha del evento</span><a id="dlink" href="#" target="_blank" style="color:var(--accent)" data-i18n="abrir">abrir ↗</a></div>
   
-  <div id="dFeltWidget" class="felt-widget">
-    <div class="felt-title">
-      <span>¿Sentiste este sismo?</span>
-      <span id="dFeltCount" style="color:var(--muted);font-size:10px"></span>
+  <!-- Mini cabecera compacta para móvil -->
+  <div class="dhdr-mobile">
+    <div id="dmagPill" class="dhdr-mag">—</div>
+    <div class="dhdr-info">
+      <div id="dplaceMob" class="dhdr-place">—</div>
+      <div id="dmetaMob" class="dhdr-meta">—</div>
     </div>
-    <div class="felt-btns">
-      <button data-intensidad="debil" data-mmi="2" class="felt-btn">🟢 Débil</button>
-      <button data-intensidad="leve" data-mmi="4" class="felt-btn">🟡 Leve</button>
-      <button data-intensidad="moderado" data-mmi="5" class="felt-btn">🟠 Moderado</button>
-      <button data-intensidad="fuerte" data-mmi="7" class="felt-btn">🔴 Fuerte</button>
-    </div>
-    <div id="feltMsg" class="felt-msg">¡Reporte registrado en tiempo real!</div>
   </div>
 
+  <!-- Cabecera clásica para escritorio -->
+  <div id="dmagbig">— <small>Mw</small></div>
+
+  <!-- Botones de acción principales -->
   <div id="drowbtns">
     <button id="dshare" data-i18n="compartir">🔗 Compartir</button>
-    <button id="dcard" data-i18n="tarjeta">🖼 Infografía HD</button>
+    <button id="dcard" data-i18n="tarjeta">🖼 Tarjeta</button>
+    <button id="dToggleMore" class="dbtn-more">↕ Detalles</button>
+  </div>
+
+  <!-- Contenedor de detalles expandible -->
+  <div id="dDetallesExtra">
+    <div class="drow"><span class="k" data-i18n="ubicacion">Ubicación</span><span id="dplace" style="text-align:right"></span></div>
+    <div class="drow"><span class="k" data-i18n="fechahora">Fecha / hora local</span><span id="dtime"></span></div>
+    <div class="drow"><span class="k" data-i18n="coords">Coordenadas</span><span id="dcoord"></span></div>
+    <div class="drow"><span class="k" data-i18n="profundidad">Profundidad</span><span id="ddepth"></span></div>
+    <div id="dtsunami"><b data-i18n="tsuT">⚠ INFORMACIÓN DE TSUNAMI</b><br><span data-i18n="tsuTxt">Evento en zona con posible aviso de tsunami. Consulta el boletín oficial:</span> <a href="https://www.tsunami.gov" target="_blank">tsunami.gov ↗</a></div>
+    <div class="drow" id="drowPager"><span class="k" data-i18n="pagerL">Impacto estimado (PAGER)</span><span id="dpager"></span></div>
+    <div class="drow" id="drowFelt"><span class="k" data-i18n="feltL">Reportes de personas</span><span id="dfelt"></span></div>
+    <div class="drow"><span class="k" data-i18n="fuenteL">Fuente</span><span id="dsrc"></span></div>
+    <div class="drow"><span class="k" data-i18n="ficha">Ficha del evento</span><a id="dlink" href="#" target="_blank" style="color:var(--accent)" data-i18n="abrir">abrir ↗</a></div>
+    
+    <div id="dFeltWidget" class="felt-widget">
+      <div class="felt-title">
+        <span>¿Sentiste este sismo?</span>
+        <span id="dFeltCount" style="color:var(--muted);font-size:10px"></span>
+      </div>
+      <div class="felt-btns">
+        <button data-intensidad="debil" data-mmi="2" class="felt-btn">🟢 Débil</button>
+        <button data-intensidad="leve" data-mmi="4" class="felt-btn">🟡 Leve</button>
+        <button data-intensidad="moderado" data-mmi="5" class="felt-btn">🟠 Moderado</button>
+        <button data-intensidad="fuerte" data-mmi="7" class="felt-btn">🔴 Fuerte</button>
+      </div>
+      <div id="feltMsg" class="felt-msg">¡Reporte registrado en tiempo real!</div>
+    </div>
   </div>
 </div>
 
@@ -1548,6 +1595,16 @@ function selectQuake(q, fly){
   document.querySelectorAll('.quake').forEach(el=>el.classList.toggle('sel', el.dataset.id===q.id));
   const el = document.querySelector(`.quake[data-id="${q.id}"]`);
   if(el) el.scrollIntoView({block:'nearest', behavior:'smooth'});
+
+  // Mini cabecera compacta móvil
+  const mPill = document.getElementById('dmagPill');
+  if(mPill){ mPill.textContent = 'M ' + q.mag.toFixed(1); mPill.style.background = magCss(q.mag); }
+  const mPlace = document.getElementById('dplaceMob');
+  if(mPlace) mPlace.textContent = q.place;
+  const mMeta = document.getElementById('dmetaMob');
+  if(mMeta) mMeta.textContent = (fmtTime(q.time).split(',')[1]||'').trim() + ' · prof. ' + (q.depth||0).toFixed(0) + ' km · ' + (q.src||'');
+
+  // Cabecera escritorio
   document.getElementById('dmagbig').innerHTML = q.mag.toFixed(1)+' <small>M</small>';
   document.getElementById('dmagbig').style.color = magCss(q.mag);
   document.getElementById('dplace').textContent = q.place;
@@ -1581,6 +1638,12 @@ function selectQuake(q, fly){
   if(cF) cF.textContent = '';
   actualizarContadorFelt(q.id);
 
+  // Colapsar detalles extra en móvil para mantener la pantalla despejada
+  const det = document.getElementById('detail');
+  if(det) det.classList.remove('expandido');
+  const dToggle = document.getElementById('dToggleMore');
+  if(dToggle) dToggle.textContent = '↕ Detalles';
+
   const dl = document.getElementById('dlink');
   if(q.url){ dl.style.display=''; dl.href = q.url; } else { dl.style.display='none'; }
   document.getElementById('detail').classList.add('on');
@@ -1600,10 +1663,9 @@ function autoAjustarDetail(){
   if(esMovil()){
     det.style.left = '8px';
     det.style.right = '8px';
-    det.style.bottom = '64px';
+    det.style.bottom = '62px';
     det.style.top = 'auto';
     det.style.transform = 'none';
-    det.style.maxHeight = 'calc(100vh - 128px)';
     return;
   }
   if(det.classList.contains('movido')) return;
@@ -1632,6 +1694,16 @@ function autoAjustarDetail(){
   det.style.right = 'auto';
   det.style.transform = 'translateX(-50%)';
   det.style.maxHeight = Math.max(200, innerHeight - 90) + 'px';
+}
+
+const btnToggleMore = document.getElementById('dToggleMore');
+if(btnToggleMore){
+  btnToggleMore.addEventListener('click', ()=>{
+    const det = document.getElementById('detail');
+    if(!det) return;
+    det.classList.toggle('expandido');
+    btnToggleMore.textContent = det.classList.contains('expandido') ? '▲ Menos' : '↕ Detalles';
+  });
 }
 function autoAjustarSatBtns(){
   const btns = document.querySelector('.satbtns');
@@ -3255,8 +3327,22 @@ function tzAlternar(q){
   if(i>=0) tzSel.splice(i,1); else tzSel.push(q);
   tzRedibujar();
   tzActualizar();
-  // Mostrar inmediatamente la ficha de detalle y resaltarlo en el panel de eventos recientes
-  selectQuake(q, false);
+
+  // En modo trazo, mostrar y mantener visible la lista inferior con los puntos conectados
+  const l = document.getElementById('tzLista');
+  if(l && tzSel.length > 0 && !l.classList.contains('on')){
+    l.classList.add('on');
+    const tgl = document.getElementById('tzToggleList');
+    if(tgl) tgl.textContent = t('tzOcultarLista');
+  }
+
+  // Resaltar en el panel de eventos recientes
+  document.querySelectorAll('.quake').forEach(el=>el.classList.toggle('sel', el.dataset.id===q.id));
+  const el = document.querySelector(`.quake[data-id="${q.id}"]`);
+  if(el) el.scrollIntoView({block:'nearest', behavior:'smooth'});
+
+  // En móvil cerramos la tarjeta grande para poder ver todos los puntos y arcos libremente
+  if(esMovil()) cerrarDetail();
 }
 function tzLimpiarTodo(){
   tzSel = [];
