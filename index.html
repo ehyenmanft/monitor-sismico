@@ -2577,7 +2577,8 @@ function pintarSismosSat(){
       offset: [0, -rad - 2],
       className: 'quake-mag-badge'
     });
-    m.on('click', ()=>{
+    m.on('click', (e)=>{
+      if(e && e.originalEvent) L.DomEvent.stopPropagation(e);
       if(tzActivo) tzAlternar(q);
       else selectQuake(q, false);
     });
@@ -2589,6 +2590,8 @@ function pintarSismosSat(){
 function tzPintarMapa(){
   if(!satTrazo) return;
   satTrazo.clearLayers();
+  if(!tzSel.length) return;
+
   tzSel.forEach((q,i)=>{
     L.circleMarker([q.lat, q.lon], {
       radius: Math.max(7, q.mag*2.1), color:'#6ad8c0', weight:2.5,
@@ -2604,7 +2607,7 @@ function tzPintarMapa(){
       // tomar siempre el camino corto entre los dos puntos
       if(Math.abs(lon2-a.lon) > 180) lon2 += (a.lon > 0 ? 360 : -360);
       L.polyline([[a.lat, a.lon],[q.lat, lon2]], {
-        color:'#6ad8c0', weight:2, opacity:.85, interactive:false, pane:'paneTrazo'
+        color:'#6ad8c0', weight:2.5, opacity:.9, interactive:false, pane:'paneTrazo'
       }).addTo(satTrazo);
     }
   });
@@ -3303,7 +3306,7 @@ function abrirTrazo(){
   tzRotGuardada = VEL_ROTACION_ACTUAL;
   VEL_ROTACION_ACTUAL = 0;              // el globo se detiene; se gira arrastrando
   tzListaGuardados();
-  if(satCapa && document.getElementById('satmapa').classList.contains('on')) pintarSismosSat();
+  tzRedibujar();
   tzActualizar();
 }
 function cerrarTrazo(){
@@ -3317,8 +3320,6 @@ function cerrarTrazo(){
   document.getElementById('mnTz').classList.remove('act');
   if(tzRotGuardada!==null) VEL_ROTACION_ACTUAL = tzRotGuardada;
   tzLimpiarTodo();
-  // restituir los globos informativos de los marcadores del mapa
-  if(satCapa && document.getElementById('satmapa').classList.contains('on')) pintarSismosSat();
 }
 
 /* añade o quita un sismo del trazo */
@@ -3351,11 +3352,16 @@ function tzLimpiarTodo(){
 }
 
 function tzRedibujar(){
-  tzGrupo.clear();
+  while(tzGrupo.children.length > 0){
+    const obj = tzGrupo.children[0];
+    if(obj.geometry) obj.geometry.dispose();
+    tzGrupo.remove(obj);
+  }
   tzSel.forEach((q,i)=>{
     // aro que resalta el sismo elegido
     const size = Math.max(1.4, q.mag*0.7);
-    const aro = new THREE.Mesh(new THREE.RingGeometry(size*1.6, size*2.1, 26), tzMatAro);
+    const geoAro = new THREE.RingGeometry(size*1.6, size*2.1, 26);
+    const aro = new THREE.Mesh(geoAro, tzMatAro);
     aro.position.copy(latLonToV3(q.lat, q.lon, R*1.007));
     aro.lookAt(0,0,0);
     tzGrupo.add(aro);
@@ -3364,7 +3370,7 @@ function tzRedibujar(){
       const v1 = latLonToV3(tzSel[i-1].lat, tzSel[i-1].lon, 1).normalize();
       const v2 = latLonToV3(q.lat, q.lon, 1).normalize();
       const ang = Math.acos(Math.max(-1,Math.min(1, v1.dot(v2))));
-      const n = Math.max(2, Math.min(48, Math.ceil(ang*22)));
+      const n = Math.max(2, Math.min(32, Math.ceil(ang*18)));
       const alt = 1.006 + Math.min(0.05, ang*0.04);
       const pts = [];
       for(let k=0;k<=n;k++){
@@ -3372,33 +3378,37 @@ function tzRedibujar(){
         const v = new THREE.Vector3().copy(v1).lerp(v2, s).normalize();
         pts.push(v.multiplyScalar(R*(1.006 + (alt-1.006)*Math.sin(Math.PI*s))));
       }
-      tzGrupo.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), tzMatLinea));
+      const geoLine = new THREE.BufferGeometry().setFromPoints(pts);
+      tzGrupo.add(new THREE.Line(geoLine, tzMatLinea));
     }
   });
   // reflejar el trazo en el mapa plano si está abierto
   if(satTrazo && document.getElementById('satmapa').classList.contains('on')) tzPintarMapa();
-  // resaltar en la lista de eventos
+  // resaltar en la lista de eventos rápidamente con Set O(1)
+  const selSet = new Set(tzSel.map(q=>q.id));
   document.querySelectorAll('#list .quake').forEach(el=>{
-    el.classList.toggle('tzsel', tzSel.some(q=>q.id===el.dataset.id));
+    el.classList.toggle('tzsel', selSet.has(el.dataset.id));
   });
 }
 
 function tzActualizar(){
   const info = document.getElementById('tzInfo');
-  if(!tzSel.length){ info.innerHTML = t('tzAyuda'); }
-  else{
+  if(!tzSel.length){
+    if(info) info.innerHTML = t('tzAyuda');
+  } else {
     let km = 0;
     for(let i=1;i<tzSel.length;i++)
       km += distKm(tzSel[i-1].lat, tzSel[i-1].lon, tzSel[i].lat, tzSel[i].lon);
     const t0 = Math.min(...tzSel.map(q=>q.time)), t1 = Math.max(...tzSel.map(q=>q.time));
     const d = Math.round((t1-t0)/86400e3);
-    info.innerHTML = t('tzResumen')
+    if(info) info.innerHTML = t('tzResumen')
       .replace('{n}', tzSel.length)
       .replace('{km}', Math.round(km).toLocaleString(LANG==='en'?'en-GB':'es'))
       .replace('{dias}', d<1 ? t('tzUnDia') : t('tzDias').replace('{d}', d));
   }
   // lista detallada
   const cont = document.getElementById('tzLista');
+  if(!cont) return;
   cont.innerHTML = '';
   tzSel.forEach((q,i)=>{
     const dist = i>0 ? Math.round(distKm(tzSel[i-1].lat, tzSel[i-1].lon, q.lat, q.lon))+' km' : '—';
@@ -3406,9 +3416,12 @@ function tzActualizar(){
     row.className = 'tzrow';
     row.innerHTML = `<span class="tzn">${i+1}</span>
       <span class="tzm" style="background:${magCss(q.mag)}">${q.mag.toFixed(1)}</span>
-      <span>${q.place||'—'}</span>
-      <span class="tzd">${fmtTime(q.time).split(',')[0]} · ${dist}</span>`;
-    row.onclick = ()=>selectQuake(q, true);
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${q.place||'—'}</span>
+      <span class="tzd">${(fmtTime(q.time).split(',')[0]||'')} · ${dist}</span>`;
+    row.onclick = (e)=>{
+      e.stopPropagation();
+      selectQuake(q, true);
+    };
     cont.appendChild(row);
   });
 }
