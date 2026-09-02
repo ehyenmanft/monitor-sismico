@@ -696,18 +696,30 @@ body.ocultarT #timeline{display:none}
 /* ---------- móvil ---------- */
 #mobilenav{display:none}
 @media (max-width:820px){
-  header{padding:8px 10px;gap:8px;flex-wrap:wrap;align-items:center}
-  header h1{font-size:13px;letter-spacing:.1em;flex:none}
-  /* los botones caben siempre: se compactan y, si hiciera falta, saltan de línea */
-  header .hctrl{margin-left:auto;gap:5px;flex-wrap:wrap;justify-content:flex-end}
-  #pnDatos,#pnEventos,#pnTl{display:none}
-  header .hctrl button{padding:5px 8px;font-size:11px;min-width:32px;line-height:1.1}
-  /* la atribución de fuentes vive en el panel ℹ; aquí solo la hora de actualización */
-  header .src{order:3;width:100%;margin-left:0;text-align:left;font-size:9px;line-height:1.4}
-  header .src .srcline{display:none}
-  header .src a{pointer-events:none;text-decoration:none}
+  header{
+    padding:6px 8px;gap:6px;flex-wrap:nowrap;align-items:center;
+    background:linear-gradient(to bottom,rgba(11,15,20,.96),rgba(11,15,20,0.4));
+    width:100%;box-sizing:border-box;
+  }
+  header h1{font-size:12px;letter-spacing:.08em;flex-shrink:0;white-space:nowrap}
+  header .dot{width:7px;height:7px}
+  header .hctrl{
+    margin-left:auto;gap:4px;display:flex;align-items:center;
+    flex-wrap:nowrap;justify-content:flex-end;flex-shrink:0;
+  }
+  #pnDatos,#pnEventos,#pnTl,#tzBtn{display:none} /* Trazo y paneles ya están en #mobilenav */
+  header .hctrl button{
+    padding:0;width:28px;height:28px;min-width:28px;
+    font-size:10px;line-height:1;display:inline-flex;
+    align-items:center;justify-content:center;border-radius:6px;
+    flex-shrink:0;
+  }
+  header .hctrl button.ciclon-hdr-btn img{width:16px;height:16px}
+  header .hctrl button svg{width:14px;height:14px}
+  #langBtn{width:auto;min-width:26px;padding:0 4px;font-size:10px}
+  header .src{display:none}
   #hint{display:none}
-  #status{top:76px;max-width:92vw;font-size:10px}
+  #status{top:68px;max-width:92vw;font-size:10px}
   #eyeFloat{top:auto;bottom:64px;right:10px}
   #kioskExit{top:auto;bottom:64px;right:54px}
 
@@ -759,7 +771,9 @@ body.ocultarT #timeline{display:none}
   #detail.expandido #dDetallesExtra{display:block}
   #detail #drowbtns{margin-top:4px;gap:6px}
   #detail #drowbtns button{padding:6px 6px;font-size:10.5px}
-  .satbtns{top:64px;right:12px !important;z-index:24}
+  .satbtns{top:48px;right:8px !important;z-index:24;gap:5px}
+  .satbtns button{width:32px;height:32px;font-size:13px;border-radius:7px}
+  .satbtns button svg{width:14px;height:14px}
 
   /* barra de navegación inferior */
   #mobilenav{
