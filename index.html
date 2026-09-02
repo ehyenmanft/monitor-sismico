@@ -153,7 +153,8 @@ body{
 #tzLista::-webkit-scrollbar{width:5px}
 #tzLista::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
 body.trazo #scene{cursor:crosshair}
-body.trazo .quake.tzsel{border-color:#6ad8c0;background:#16262a}
+body.trazo .quake.tzsel{border-color:#6ad8c0 !important;background:#142728 !important;box-shadow:0 0 10px rgba(106,216,192,0.3)}
+body.trazo .quake.sel{outline:2px solid var(--accent);box-shadow:0 0 12px rgba(240,127,60,0.4)}
 @media (max-width:820px){ #tzBar{bottom:64px;padding:9px 11px} #tzInfo{width:100%;text-align:left;margin-left:0} }
 
 /* paneles arrastrables (escritorio) */
@@ -2348,13 +2349,10 @@ function pintarSismosSat(){
       offset: [0, -rad - 2],
       className: 'quake-mag-badge'
     });
-    if(tzActivo){
-      // en modo trazo, tocar un sismo lo une al recorrido en vez de abrir su ficha
-      m.on('click', ()=>tzAlternar(q));
-    } else {
-      m.bindPopup('<b>M '+q.mag.toFixed(1)+'</b> — '+q.place+'<br>'+
-        fmtTime(q.time)+' · '+t('prof')+' '+q.depth.toFixed(0)+' km · '+q.src);
-    }
+    m.on('click', ()=>{
+      if(tzActivo) tzAlternar(q);
+      else selectQuake(q, false);
+    });
   });
   if(tzActivo) tzPintarMapa();
 }
@@ -3101,6 +3099,8 @@ function tzAlternar(q){
   if(i>=0) tzSel.splice(i,1); else tzSel.push(q);
   tzRedibujar();
   tzActualizar();
+  // Mostrar inmediatamente la ficha de detalle y resaltarlo en el panel de eventos recientes
+  selectQuake(q, false);
 }
 function tzLimpiarTodo(){
   tzSel = [];
