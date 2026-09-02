@@ -474,6 +474,29 @@ body.kiosko .leaflet-bottom.leaflet-right{bottom:0}
 .tznum{
   color:#6ad8c0;font:700 10px 'JetBrains Mono',monospace;
   text-align:center;line-height:16px;text-shadow:0 0 4px #0b0f14,0 0 4px #0b0f14;
+  pointer-events:none !important;
+}
+.leaflet-pane.leaflet-paneTrazo,
+.leaflet-pane.leaflet-paneIsoseistas,
+.leaflet-pane.leaflet-panePlacas{
+  pointer-events:none !important;
+}
+.leaflet-pane.leaflet-paneTrazo svg,
+.leaflet-pane.leaflet-paneIsoseistas svg,
+.leaflet-pane.leaflet-panePlacas svg{
+  pointer-events:none !important;
+}
+.leaflet-pane.leaflet-paneTrazo *,
+.leaflet-pane.leaflet-paneIsoseistas *,
+.leaflet-pane.leaflet-panePlacas *{
+  pointer-events:none !important;
+}
+.leaflet-pane.leaflet-paneSismos{
+  pointer-events:auto !important;
+}
+.leaflet-pane.leaflet-paneSismos svg,
+.leaflet-pane.leaflet-paneSismos path{
+  pointer-events:auto !important;
 }
 .leaflet-tooltip.quake-mag-badge{
   background:rgba(11,15,20,0.92);
@@ -485,7 +508,7 @@ body.kiosko .leaflet-bottom.leaflet-right{bottom:0}
   padding:1px 5px;
   border-radius:4px;
   box-shadow:0 2px 6px rgba(0,0,0,0.6);
-  pointer-events:none;
+  pointer-events:none !important;
   white-space:nowrap;
 }
 .leaflet-tooltip.quake-mag-badge::before{
@@ -2521,9 +2544,16 @@ function iniciarSat(){
     /* Orden de dibujo mediante paneles de Leaflet: las placas por debajo,
        isoseistas y ondas intermedias, sismos encima y trazo manual al frente */
     satMapa.createPane('panePlacas').style.zIndex = 390;
+    satMapa.getPane('panePlacas').style.pointerEvents = 'none';
+
     satMapa.createPane('paneIsoseistas').style.zIndex = 405;
+    satMapa.getPane('paneIsoseistas').style.pointerEvents = 'none';
+
     satMapa.createPane('paneSismos').style.zIndex = 415;
+    satMapa.getPane('paneSismos').style.pointerEvents = 'auto';
+
     satMapa.createPane('paneTrazo').style.zIndex = 430;
+    satMapa.getPane('paneTrazo').style.pointerEvents = 'none';
 
     satIsoseistas = L.layerGroup().addTo(satMapa);
     satCapa = L.layerGroup().addTo(satMapa);
