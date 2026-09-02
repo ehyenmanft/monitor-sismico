@@ -1723,11 +1723,21 @@ async function cargarAnalisis(){
           pager:f.properties.alert||null, felt:f.properties.felt||null,
           lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0]
         }));
-      // complementar con el archivo histórico propio (hoja de cálculo):
+      // complementar con el catálogo histórico propio (Supabase / Archivo):
       // aporta la microsismicidad FUNVISIS que USGS no cataloga, en todo el rango
       let aporteArchivo = 0;
       try{
-        const arch = await fetchArchivo({dias, minmag: reg && reg.sinPiso ? 0 : minMag});
+        const archParams = {
+          dias,
+          minmag: (reg && reg.sinPiso) ? 0 : minMag
+        };
+        if(reg){
+          archParams.minlat = reg.minlat;
+          archParams.maxlat = reg.maxlat;
+          archParams.minlon = reg.minlon;
+          archParams.maxlon = reg.maxlon;
+        }
+        const arch = await fetchArchivo(archParams);
         arch.forEach(a=>{
           if(reg && (a.lat < reg.minlat || a.lat > reg.maxlat ||
                      a.lon < reg.minlon || a.lon > reg.maxlon)) return;
@@ -2093,6 +2103,10 @@ async function fetchArchivo(opts){
         queryUrl += `&fecha_hora_utc=gte.${encodeURIComponent(desdeIso)}`;
         if(opts.minmag) queryUrl += `&magnitud=gte.${opts.minmag}`;
         if(opts.fuente) queryUrl += `&fuente=eq.${encodeURIComponent(opts.fuente)}`;
+        if(opts.minlat != null) queryUrl += `&lat=gte.${opts.minlat}`;
+        if(opts.maxlat != null) queryUrl += `&lat=lte.${opts.maxlat}`;
+        if(opts.minlon != null) queryUrl += `&lon=gte.${opts.minlon}`;
+        if(opts.maxlon != null) queryUrl += `&lon=lte.${opts.maxlon}`;
         queryUrl += '&order=fecha_hora_utc.desc&limit=12000';
       }
 
