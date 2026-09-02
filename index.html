@@ -393,25 +393,45 @@ body.sinmenus #eyeFloat{display:block}
 /* panel de análisis */
 #analisis{
   display:none;position:fixed;z-index:26;
-  left:50%;top:56%;transform:translate(-50%,-50%);
-  width:min(760px,94vw);max-height:84vh;overflow-y:auto;
+  left:50%;top:54%;transform:translate(-50%,-50%);
+  width:min(760px,94vw);max-height:86vh;overflow-y:auto;overflow-x:hidden;
+  box-sizing:border-box;
 }
 #analisis.on{display:block}
-#analisis .actrl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+#analisis .actrl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
 #analisis select{
   background:#161d26;color:var(--text);border:1px solid var(--line);border-radius:6px;
   font-family:inherit;font-size:11px;padding:4px 7px;
 }
-#analisis .anums{display:flex;gap:18px;margin:10px 0 4px;flex-wrap:wrap}
-#analisis .anums div{font-size:11px;color:var(--muted)}
-#analisis .anums b{display:block;font-size:18px;color:var(--text)}
-#analisis h3{font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;margin:14px 0 6px}
+.an-tabs{display:flex;gap:6px;margin:8px 0 12px;background:#141b24;padding:4px;border-radius:8px;border:1px solid var(--line)}
+.an-tab{flex:1;padding:7px 4px;background:none;border:none;border-radius:6px;color:var(--muted);font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center}
+.an-tab:hover{color:var(--text)}
+.an-tab.act{background:#222f3e;color:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,0.3)}
+
+.an-tab-content{display:none}
+.an-tab-content.act{display:block}
+
+#analisis .anums{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  margin:6px 0 10px;background:#141b24;padding:10px;border-radius:8px;border:1px solid var(--line);
+}
+#analisis .anums div{font-size:10px;color:var(--muted);text-align:center;min-width:0}
+#analisis .anums b{display:block;font-size:16px;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#analisis h3{font-family:'Archivo',sans-serif;font-size:10px;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;margin:12px 0 6px}
 #analisis canvas{width:100%;display:block;background:#0d1218;border:1px solid var(--line);border-radius:8px}
 #analisis .anota{font-size:9px;color:var(--muted);margin-top:8px;line-height:1.5}
 #anClose{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;font-family:inherit}
 #anLoading{text-align:center;color:var(--muted);font-size:11px;padding:30px 0;display:none}
 @media (max-width:820px){
-  #analisis{left:4px;right:4px;top:60px;bottom:64px;transform:none;width:auto;max-height:none}
+  #analisis{
+    left:8px;right:8px;top:58px;bottom:64px;
+    transform:none;width:auto;max-width:calc(100vw - 16px);
+    padding:12px;max-height:none;overflow-y:auto;overflow-x:hidden;
+  }
+  #analisis select{max-width:140px;font-size:10.5px}
+  #analisis .anums b{font-size:14px}
+  #analisis canvas{height:165px !important}
+  #anList{max-height:calc(100vh - 300px);overflow-y:auto}
 }
 
 
@@ -569,6 +589,7 @@ body.ocultarT #timeline{display:none}
   padding:9px 8px;margin-bottom:6px;
   border:1px solid transparent;border-radius:8px;
   cursor:pointer;transition:background .15s,border-color .15s;
+  min-width:0;
 }
 .quake:hover{background:#161d26}
 .quake.sel{border-color:var(--accent);background:#161d26}
@@ -577,8 +598,9 @@ body.ocultarT #timeline{display:none}
   font-weight:700;font-size:15px;border-radius:7px;
   color:#0b0f14;
 }
-.qinfo .qplace{font-size:12px;line-height:1.35;margin-bottom:3px}
-.qinfo .qmeta{font-size:10px;color:var(--muted)}
+.qinfo{min-width:0;overflow:hidden}
+.qinfo .qplace{font-size:12px;line-height:1.35;margin-bottom:3px;overflow-wrap:break-word;word-break:break-word}
+.qinfo .qmeta{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* detail card */
 #detail{
@@ -915,34 +937,53 @@ body.ocultarT #timeline{display:none}
   </div>
   <div id="anLoading" data-i18n="consultando">Consultando catálogo histórico…</div>
   <div id="anBody" style="display:none">
-    <div class="anums">
-      <div><b id="anTotal">—</b><span data-i18n="eventos">Eventos</span></div>
-      <div><b id="anMax">—</b><span data-i18n="magmax">Magnitud máx.</span></div>
-      <div><b id="anProm">—</b><span data-i18n="promdia">prom./día</span></div>
+    
+    <div class="an-tabs">
+      <button class="an-tab act" data-antab="actividad">📊 Actividad</button>
+      <button class="an-tab" data-antab="geofisica">📈 Geofísica & TNT</button>
+      <button class="an-tab" data-antab="lista">📋 Lista (<span id="anTabCount">0</span>)</button>
     </div>
-    <div class="anums" style="margin-top:10px">
-      <div><b id="anEnergia">—</b><span>Energía Sísmica</span></div>
-      <div><b id="anTnt">—</b><span>Equiv. TNT</span></div>
-      <div><b id="anValorB">—</b><span>Valor b (G-R)</span></div>
+
+    <!-- Pestaña 1: Actividad Sísmica -->
+    <div id="anTab-actividad" class="an-tab-content act">
+      <div class="anums">
+        <div><b id="anTotal">—</b><span data-i18n="eventos">Eventos</span></div>
+        <div><b id="anMax">—</b><span data-i18n="magmax">Magnitud máx.</span></div>
+        <div><b id="anProm">—</b><span data-i18n="promdia">prom./día</span></div>
+      </div>
+      <h3 data-i18n="magTiempo">Magnitud vs tiempo</h3>
+      <canvas id="chMag" height="175"></canvas>
+      <h3 data-i18n="porDia">Eventos por día</h3>
+      <canvas id="chDia" height="145"></canvas>
     </div>
-    <h3 data-i18n="magTiempo">Magnitud vs tiempo</h3>
-    <canvas id="chMag" height="190"></canvas>
-    <h3 data-i18n="porDia">Eventos por día</h3>
-    <canvas id="chDia" height="150"></canvas>
-    <h3>Energía Sísmica Acumulada</h3>
-    <canvas id="chEnergia" height="140"></canvas>
-    <h3>Distribución Gutenberg-Richter (log N vs M)</h3>
-    <canvas id="chGr" height="140"></canvas>
-    <h3><span data-i18n="listaPeriodo">Eventos del período</span> <span id="anListCount" style="float:right;color:var(--text)"></span></h3>
-    <div id="anList"></div>
-    <button id="anMas" data-i18n="mostrarMas">Mostrar más</button>
-    <div id="anExport">
-      <span data-i18n="exportar">Exportar reporte:</span>
-      <button data-fmt="csv">⬇ CSV</button>
-      <button data-fmt="txt">⬇ TXT</button>
-      <button data-fmt="geojson">⬇ GeoJSON</button>
+
+    <!-- Pestaña 2: Geofísica, Energía & Gutenberg-Richter -->
+    <div id="anTab-geofisica" class="an-tab-content">
+      <div class="anums">
+        <div><b id="anEnergia">—</b><span>Energía Total</span></div>
+        <div><b id="anTnt">—</b><span>Equiv. TNT</span></div>
+        <div><b id="anValorB">—</b><span>Valor b (G-R)</span></div>
+      </div>
+      <h3>Energía Sísmica Acumulada</h3>
+      <canvas id="chEnergia" height="150"></canvas>
+      <h3>Distribución Gutenberg-Richter (log N vs M)</h3>
+      <canvas id="chGr" height="150"></canvas>
     </div>
-    <button id="rpStart" data-i18n="reproducir">▶ Reproducir en el globo</button>
+
+    <!-- Pestaña 3: Lista de Eventos y Exportación -->
+    <div id="anTab-lista" class="an-tab-content">
+      <h3><span data-i18n="listaPeriodo">Eventos del período</span> <span id="anListCount" style="float:right;color:var(--text)"></span></h3>
+      <div id="anList"></div>
+      <button id="anMas" data-i18n="mostrarMas">Mostrar más</button>
+      <div id="anExport">
+        <span data-i18n="exportar">Exportar reporte:</span>
+        <button data-fmt="csv">⬇ CSV</button>
+        <button data-fmt="txt">⬇ TXT</button>
+        <button data-fmt="geojson">⬇ GeoJSON</button>
+      </div>
+      <button id="rpStart" data-i18n="reproducir" style="margin-top:10px">▶ Reproducir en el globo</button>
+    </div>
+
   </div>
   <div class="anota" id="anNota"></div>
 </div>
@@ -1997,10 +2038,16 @@ async function cargarAnalisis(){
   anRenderLista(true);
   document.getElementById('anLoading').style.display = 'none';
   document.getElementById('anBody').style.display = 'block';
-  dibujarDispersion(datos, dias);
-  dibujarBarrasDia(datos, dias);
-  dibujarEnergia(datos, dias);
-  dibujarGutenbergRichter(datos);
+  requestAnimationFrame(()=>{
+    const tabActiva = document.querySelector('.an-tab.act')?.dataset.antab || 'actividad';
+    if(tabActiva === 'actividad'){
+      dibujarDispersion(datos, dias);
+      dibujarBarrasDia(datos, dias);
+    } else if(tabActiva === 'geofisica'){
+      dibujarEnergia(datos, dias);
+      dibujarGutenbergRichter(datos);
+    }
+  });
 }
 
 const bandaColor = m => m>=6 ? '#e8484f' : m>=4.5 ? '#f07f3c' : m>=2.5 ? '#e8b23c' : '#3ec6a8';
@@ -2629,8 +2676,37 @@ function anRenderLista(reset){
   anRender = hasta;
   document.getElementById('anMas').style.display = anRender < anLista.length ? 'block' : 'none';
   document.getElementById('anListCount').textContent = anLista.length;
+  const tabC = document.getElementById('anTabCount');
+  if(tabC) tabC.textContent = anLista.length;
 }
 document.getElementById('anMas').addEventListener('click', ()=>anRenderLista(false));
+
+/* control de pestañas dentro de análisis */
+document.querySelectorAll('.an-tab').forEach(t => {
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.an-tab').forEach(o => o.classList.remove('act'));
+    document.querySelectorAll('.an-tab-content').forEach(c => c.classList.remove('act'));
+    t.classList.add('act');
+    const tabId = t.dataset.antab;
+    const cont = document.getElementById('anTab-' + tabId);
+    if(cont) cont.classList.add('act');
+
+    // Redibujar canvas según la pestaña activa para evitar distorsión de escala
+    if(anUltimos && anUltimos.length){
+      const valor = document.getElementById('anRango').value;
+      const dias = valor === 'desde' ? Math.ceil((Date.now() - FECHA_DESDE)/86400e3) : parseInt(valor);
+      requestAnimationFrame(()=>{
+        if(tabId === 'actividad'){
+          dibujarDispersion(anUltimos, dias);
+          dibujarBarrasDia(anUltimos, dias);
+        } else if(tabId === 'geofisica'){
+          dibujarEnergia(anUltimos, dias);
+          dibujarGutenbergRichter(anUltimos);
+        }
+      });
+    }
+  });
+});
 
 /* resalta el evento i de la lista y lo trae a la vista */
 function anMarcar(i){
